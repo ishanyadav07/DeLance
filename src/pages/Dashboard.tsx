@@ -1,38 +1,111 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, Filter, Lock, Rocket, ShieldCheck, CheckCircle, FileText, Gavel, ArrowRight } from 'lucide-react';
+import { Search, Filter, Lock, Rocket, ShieldCheck, CheckCircle, FileText, Gavel, ArrowRight, Loader2, Clock, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useFirebase } from '../components/FirebaseProvider';
 import { GlassCard } from '../components/ui/GlassCard';
-import { GradientText } from '../components/ui/GradientText';
 
 export const Dashboard = () => {
+  const { user, loading: authLoading, isAdmin } = useFirebase();
   const navigate = useNavigate();
-  const stats = [
-    { label: 'Total Budget Locked', value: '$142,500', change: '+12.5% this month', icon: Lock, color: 'text-primary' },
-    { label: 'Active Jobs', value: '04', change: '2 pending milestone approval', icon: Rocket, color: 'text-secondary' },
-    { label: 'Completed Jobs', value: '18', change: '98% success rate on chain', icon: ShieldCheck, color: 'text-tertiary' },
-  ];
+  const [myJobs, setMyJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const deployments = [
-    { name: 'Cross-Chain Dex Audit', milestone: 'Milestone 2 of 4', architect: 'Alex R.', wallet: '0x71C...4f92', budget: '45,000 USDC', status: 'Locked' },
-    { name: 'Yield Aggregator UI', milestone: 'Milestone 1 of 2', architect: 'Sarah Chen', wallet: '0x3A2...b1e2', budget: '12,500 USDC', status: 'Locked' },
-    { name: 'NFT Royalty Contract', milestone: 'Pending Selection', architect: 'Unassigned', wallet: '', budget: '8,000 USDC', status: 'Draft' },
+  useEffect(() => {
+    if (!user) return;
+
+    // Fetch jobs: if admin, fetch all; otherwise, fetch only user's jobs
+    const jobsCollection = collection(db, 'jobs');
+    const jobsQuery = isAdmin 
+      ? query(jobsCollection, orderBy('createdAt', 'desc'), limit(50))
+      : query(jobsCollection, where('clientId', '==', user.uid), orderBy('createdAt', 'desc'));
+    
+    const unsubscribeJobs = onSnapshot(jobsQuery, (snapshot) => {
+      setMyJobs(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching jobs:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribeJobs();
+  }, [user, isAdmin]);
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+        <h2 className="text-3xl font-headline font-bold mb-4">Access Denied</h2>
+        <p className="text-on-surface-variant mb-8">Please sign in to view your dashboard and manage your projects.</p>
+        <Link to="/" className="px-8 py-4 bg-primary text-surface rounded-xl font-bold">
+          Go to Home
+        </Link>
+      </div>
+    );
+  }
+
+  const totalBudget = myJobs.reduce((acc, job) => acc + (Number(job.budget) || 0), 0);
+  const activeJobsCount = myJobs.filter(j => j.status === 'open').length;
+  const completedJobsCount = myJobs.filter(j => j.status === 'completed').length;
+
+  const stats = [
+    { 
+      label: isAdmin ? 'Total Platform Liquidity' : 'Total Budget Locked', 
+      value: `${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'ETH'}`, 
+      change: `${myJobs.length} total ${isAdmin ? 'platform' : 'personal'} jobs`, 
+      icon: Lock, 
+      color: 'text-primary' 
+    },
+    { 
+      label: 'Open for Bids', 
+      value: activeJobsCount.toString().padStart(2, '0'), 
+      change: 'Awaiting freelancer selection', 
+      icon: Rocket, 
+      color: 'text-secondary' 
+    },
+    { 
+      label: 'Completed Jobs', 
+      value: completedJobsCount.toString().padStart(2, '0'), 
+      change: '100% success rate', 
+      icon: ShieldCheck, 
+      color: 'text-tertiary' 
+    },
   ];
 
   const pulse = [
-    { time: '2 hours ago', title: 'Milestone #1 Approved', desc: 'Yield Aggregator UI. Escrow released 6,250 USDC to Sarah Chen.', icon: CheckCircle, color: 'text-tertiary', bg: 'bg-tertiary/20' },
-    { time: '5 hours ago', title: 'New Work Submitted', desc: 'Alex R. uploaded audit report for Cross-Chain Dex.', icon: FileText, color: 'text-secondary', bg: 'bg-secondary/20' },
-    { time: 'Yesterday', title: 'Contract Signed', desc: '"L2 Governance Framework" successfully locked in escrow.', icon: Gavel, color: 'text-primary', bg: 'bg-primary/20' },
+    { time: 'Just now', title: 'Dashboard Connected', desc: 'Your real-time protocol dashboard is now active and synced with Firestore.', icon: CheckCircle, color: 'text-tertiary', bg: 'bg-tertiary/20' },
+    ...myJobs.slice(0, 2).map(job => ({
+      time: job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recently',
+      title: 'Project Deployed',
+      desc: `"${job.title}" is now live and accepting bids from the network.`,
+      icon: Rocket,
+      color: 'text-primary',
+      bg: 'bg-primary/20'
+    }))
   ];
 
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 sm:mb-16 gap-6">
         <div className="space-y-2">
-          <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter">Architect Dashboard</h1>
+          <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter">
+            {isAdmin ? 'Admin Control Center' : `Welcome, ${user.displayName?.split(' ')[0] || 'Architect'}`}
+          </h1>
           <p className="text-on-surface-variant text-base md:text-lg max-w-lg">
-            Managing 4 active smart-contract deployments across 2 networks. Your total secured liquidity is currently $142,500 USDC.
+            {isAdmin 
+              ? `Overseeing ${myJobs.length} platform deployments and global liquidity.`
+              : `Managing ${myJobs.length} active smart-contract deployments. Your total secured liquidity is currently ${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'ETH'}.`
+            }
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -94,41 +167,49 @@ export const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {deployments.map((job, i) => (
-                  <tr key={i} onClick={() => navigate('/project/1')} className="hover:bg-white/5 transition-colors cursor-pointer group">
+                {myJobs.length > 0 ? myJobs.map((job, i) => (
+                  <tr key={i} onClick={() => navigate(`/project/${job.id}`)} className="hover:bg-white/5 transition-colors cursor-pointer group">
                     <td className="px-6 py-6">
-                      <p className="font-headline font-bold group-hover:text-primary transition-colors">{job.name}</p>
-                      <p className="text-xs text-on-surface-variant mt-1">{job.milestone}</p>
+                      <p className="font-headline font-bold group-hover:text-primary transition-colors">{job.title}</p>
+                      <p className="text-xs text-on-surface-variant mt-1">{job.category}</p>
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-surface-container overflow-hidden">
-                          {job.architect !== 'Unassigned' ? (
-                            <img src={`https://picsum.photos/seed/${job.architect}/100/100`} alt="" referrerPolicy="no-referrer" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-outline"><Search size={14} /></div>
-                          )}
+                        <div className="w-8 h-8 rounded-lg bg-surface-container overflow-hidden flex items-center justify-center text-outline">
+                          <User size={14} />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{job.architect}</p>
-                          <p className="font-label text-[10px] text-outline">{job.wallet}</p>
+                          <p className="font-medium text-sm">{job.freelancerName || (job.status === 'open' ? 'Awaiting Bids' : 'Unassigned')}</p>
+                          <p className="font-label text-[10px] text-outline">
+                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 8)}...` : 'Protocol Network'}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-6">
-                      <p className="font-headline font-bold">{job.budget}</p>
+                      <p className="font-headline font-bold">{job.budget} {job.currency}</p>
                       <p className="font-label text-[10px] text-tertiary">Secured in V3 Vault</p>
                     </td>
                     <td className="px-6 py-6 text-right">
                       <span className={cn(
                         "px-3 py-1 rounded-full font-label text-[10px] uppercase tracking-tighter",
-                        job.status === 'Locked' ? "bg-tertiary/10 text-tertiary" : "bg-secondary/10 text-secondary"
+                        job.status === 'open' ? "bg-secondary/10 text-secondary" : 
+                        job.status === 'in-progress' ? "bg-primary/10 text-primary" :
+                        job.status === 'submitted' ? "bg-tertiary/10 text-tertiary" :
+                        job.status === 'completed' ? "bg-success/10 text-success" :
+                        "bg-error/10 text-error"
                       )}>
                         {job.status}
                       </span>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center text-on-surface-variant italic">
+                      No active deployments found. <Link to="/post-project" className="text-primary font-bold hover:underline">Post your first project</Link> to get started.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

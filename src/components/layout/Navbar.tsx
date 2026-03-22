@@ -5,13 +5,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../ui/GlassCard';
 import { GradientText } from '../ui/GradientText';
+import { useFirebase } from '../FirebaseProvider';
+import { signInWithGoogle, signOut } from '../../services/authService';
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { user, loading, isAdmin } = useFirebase();
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const showSidebar = location.pathname !== '/';
@@ -22,14 +25,29 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleConnect = () => {
-    // Mock connection
-    setIsConnected(true);
+  const handleConnect = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      if (error.code === 'auth/popup-blocked') {
+        alert('Please allow popups for this site to sign in with Google.');
+      } else if (error.code !== 'auth/cancelled-popup-request') {
+        console.error('Login failed:', error);
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setShowProfileMenu(false);
+  const handleDisconnect = async () => {
+    try {
+      await signOut();
+      setShowProfileMenu(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const notifications = [
@@ -91,7 +109,7 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          {isConnected ? (
+          {user ? (
             <>
               {/* Notification Center */}
               <div className="relative">
@@ -159,7 +177,7 @@ export const Navbar = () => {
                 >
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-tertiary p-0.5">
                     <div className="w-full h-full rounded-[10px] bg-surface flex items-center justify-center overflow-hidden">
-                      <img src="https://picsum.photos/seed/architect/100/100" alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={user.photoURL || "https://picsum.photos/seed/architect/100/100"} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                   </div>
                   <ChevronDown size={14} className={cn("text-on-surface-variant transition-transform", showProfileMenu && "rotate-180")} />
@@ -174,10 +192,15 @@ export const Navbar = () => {
                       className="absolute right-0 mt-4 w-56 rounded-2xl shadow-2xl overflow-hidden"
                     >
                       <GlassCard className="p-0 sm:p-0 border border-white/5">
-                        <div className="p-4 border-b border-white/5">
-                          <p className="text-xs font-bold">Alex Rivers</p>
-                          <p className="text-[10px] font-mono text-primary truncate">0x71C...4f92</p>
-                        </div>
+            <div className="p-4 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold">{user.displayName}</p>
+                {isAdmin && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-error/10 text-error text-[8px] font-bold uppercase tracking-widest border border-error/20">Admin</span>
+                )}
+              </div>
+              <p className="text-[10px] font-mono text-primary truncate">{user.email}</p>
+            </div>
                         <div className="p-2">
                           <Link 
                             to="/profile" 
@@ -195,6 +218,16 @@ export const Navbar = () => {
                             <Settings size={16} className="text-on-surface-variant" />
                             <span>Settings</span>
                           </Link>
+                          {isAdmin && (
+                            <Link 
+                              to="/marketplace" 
+                              onClick={() => setShowProfileMenu(false)}
+                              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-error/10 text-error text-sm transition-colors"
+                            >
+                              <Shield size={16} />
+                              <span>Admin Panel</span>
+                            </Link>
+                          )}
                         </div>
                         <div className="p-2 border-t border-white/5 bg-surface-container-high/30">
                           <button 
@@ -202,7 +235,7 @@ export const Navbar = () => {
                             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-error/10 text-error text-sm transition-colors"
                           >
                             <LogOut size={16} />
-                            <span>Disconnect</span>
+                            <span>Sign Out</span>
                           </button>
                         </div>
                       </GlassCard>
@@ -219,10 +252,11 @@ export const Navbar = () => {
           ) : (
             <button 
               onClick={handleConnect}
-              className="hidden md:flex items-center gap-2 bg-primary text-surface px-5 py-2 rounded-xl font-label font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
+              disabled={loading || isLoggingIn}
+              className="hidden md:flex items-center gap-2 bg-primary text-surface px-5 py-2 rounded-xl font-label font-bold text-xs uppercase tracking-wider active:scale-95 transition-all disabled:opacity-50"
             >
               <Wallet size={16} />
-              Connect Wallet
+              {loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Sign In with Google'}
             </button>
           )}
 
@@ -259,7 +293,7 @@ export const Navbar = () => {
               >
                 Dashboard
               </Link>
-              {isConnected && (
+              {user && (
                 <>
                   <Link 
                     to="/post-project" 
@@ -284,16 +318,17 @@ export const Navbar = () => {
                   </Link>
                 </>
               )}
-              {!isConnected ? (
+              {!user ? (
                 <button 
                   onClick={() => {
                     handleConnect();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-surface py-4 rounded-xl font-bold"
+                  disabled={loading || isLoggingIn}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-surface py-4 rounded-xl font-bold disabled:opacity-50"
                 >
                   <Wallet size={20} />
-                  Connect Wallet
+                  {loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Sign In with Google'}
                 </button>
               ) : (
                 <div className="pt-4 border-t border-white/5 space-y-4">
@@ -312,7 +347,7 @@ export const Navbar = () => {
                     className="w-full flex items-center justify-center gap-2 bg-error/10 text-error py-4 rounded-xl font-bold hover:bg-error/20 transition-colors"
                   >
                     <LogOut size={20} />
-                    Disconnect Wallet
+                    Sign Out
                   </button>
                 </div>
               )}

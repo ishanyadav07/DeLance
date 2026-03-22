@@ -1,12 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Shield, Zap, Globe, Lock, Key, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
+import { useFirebase } from '../components/FirebaseProvider';
+import { signInWithGoogle } from '../services/authService';
 
 export const LandingPage = () => {
+  const { user, loading } = useFirebase();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const navigate = useNavigate();
+
+  const handleGetStarted = async () => {
+    if (user) {
+      navigate('/dashboard');
+      return;
+    }
+    
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    
+    try {
+      await signInWithGoogle();
+      navigate('/dashboard');
+    } catch (error: any) {
+      if (error.code === 'auth/popup-blocked') {
+        alert('Please allow popups for this site to sign in with Google.');
+      } else if (error.code !== 'auth/cancelled-popup-request') {
+        console.error('Login failed:', error);
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -45,8 +74,12 @@ export const LandingPage = () => {
               <Link to="/marketplace" className="w-full sm:w-auto px-12 py-6 bg-primary text-surface rounded-2xl font-label font-bold uppercase tracking-widest text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/40 flex items-center justify-center gap-3">
                 Browse Jobs <ArrowRight size={18} />
               </Link>
-              <button className="w-full sm:w-auto px-12 py-6 glass-card text-white rounded-2xl font-label font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition-all active:scale-95 border border-white/10 flex items-center justify-center">
-                Connect Wallet
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading || isLoggingIn}
+                className="w-full sm:w-auto px-12 py-6 glass-card text-white rounded-2xl font-label font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition-all active:scale-95 border border-white/10 flex items-center justify-center disabled:opacity-50"
+              >
+                {user ? 'Go to Dashboard' : (loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Get Started')}
               </button>
             </div>
           </motion.div>
@@ -181,8 +214,12 @@ export const LandingPage = () => {
               Join the next generation of architects and creators on the most secure Web3 marketplace.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button className="w-full sm:w-auto px-12 py-6 bg-white text-surface rounded-xl font-label font-bold uppercase tracking-widest text-sm hover:scale-105 transition-all">
-                Get Started Now
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading || isLoggingIn}
+                className="w-full sm:w-auto px-12 py-6 bg-white text-surface rounded-xl font-label font-bold uppercase tracking-widest text-sm hover:scale-105 transition-all disabled:opacity-50"
+              >
+                {user ? 'Go to Dashboard' : (loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Get Started Now')}
               </button>
               <button className="w-full sm:w-auto px-12 py-6 glass-card text-white rounded-xl font-label font-bold uppercase tracking-widest text-sm hover:bg-white/5 transition-all">
                 Read the Docs

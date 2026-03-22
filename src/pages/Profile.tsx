@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { 
-  User, 
+  User as UserIcon, 
   MapPin, 
   Link as LinkIcon, 
   Twitter, 
@@ -13,32 +13,79 @@ import {
   ExternalLink,
   Code2,
   Terminal,
-  Cpu
+  Cpu,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
+import { useFirebase } from '../components/FirebaseProvider';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../services/authService';
 
 export const Profile = () => {
+  const { user, loading: authLoading } = useFirebase();
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setProfileData(docSnap.data());
+        }
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      fetchProfile();
+    }
+  }, [user, authLoading]);
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+        <h2 className="text-3xl font-headline font-bold mb-4">Please Sign In</h2>
+        <p className="text-on-surface-variant mb-8">You need to be authenticated to view your profile.</p>
+      </div>
+    );
+  }
+
   const architect = {
-    name: 'Alex Rivers',
-    handle: '0x71C...4f92',
-    bio: 'Full-stack Web3 Architect specializing in ZK-proofs and DeFi protocol security. Building the future of trustless finance.',
-    location: 'Berlin, DE',
-    website: 'alexrivers.eth',
-    joined: 'Oct 2023',
+    name: profileData?.displayName || user.displayName || 'Anonymous Architect',
+    handle: user.uid.slice(0, 6) + '...' + user.uid.slice(-4),
+    bio: profileData?.bio || 'No bio provided yet. Protocol architect in the making.',
+    location: profileData?.location || 'Global Protocol',
+    website: profileData?.website || 'delance.protocol',
+    joined: profileData?.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently',
     stats: [
-      { label: 'Success Rate', value: '100%', icon: CheckCircle2 },
-      { label: 'Avg. Rating', value: '4.9/5', icon: Star },
-      { label: 'Jobs Completed', value: '24', icon: ShieldCheck },
-      { label: 'Total Earned', value: '84.5 ETH', icon: Cpu },
+      { label: 'Success Rate', value: profileData?.successRate || '100%', icon: CheckCircle2 },
+      { label: 'Avg. Rating', value: profileData?.rating || '5.0/5', icon: Star },
+      { label: 'Jobs Completed', value: profileData?.completedProjects || '0', icon: ShieldCheck },
+      { label: 'Reputation', value: profileData?.reputation || '0', icon: Cpu },
     ],
-    skills: ['Solidity', 'Rust', 'React', 'ZK-SNARKs', 'EVM Optimization'],
-    portfolio: [
-      { title: 'YieldVault V2', desc: 'Optimized smart contracts for a cross-chain yield aggregator.', tags: ['Solidity', 'Base'] },
-      { title: 'ZkIdentity', desc: 'Privacy-preserving identity layer for DAO governance.', tags: ['Rust', 'Circom'] },
-      { title: 'DeLance Protocol', desc: 'Core escrow logic and frontend architecture.', tags: ['TypeScript', 'Ethers.js'] },
-    ]
+    skills: profileData?.skills || ['Newcomer'],
+    portfolio: profileData?.portfolio || []
   };
 
   return (
@@ -50,7 +97,7 @@ export const Profile = () => {
             <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-primary to-tertiary p-1">
               <div className="w-full h-full rounded-[22px] bg-surface flex items-center justify-center overflow-hidden">
                 <img 
-                  src="https://picsum.photos/seed/architect/200/200" 
+                  src={user.photoURL || "https://picsum.photos/seed/architect/200/200"} 
                   alt="Profile" 
                   loading="lazy"
                   className="w-full h-full object-cover opacity-80"
@@ -140,32 +187,38 @@ export const Profile = () => {
               </h3>
               <button className="text-xs text-primary font-medium hover:underline">View All</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {architect.portfolio.map((item, i) => (
-                <motion.div 
-                  key={i}
-                  whileHover={{ y: -4 }}
-                  className="h-full"
-                >
-                  <GlassCard className="p-6 rounded-2xl border border-white/5 hover:border-primary/20 transition-all group cursor-pointer h-full">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold group-hover:text-primary transition-colors">{item.title}</h4>
-                      <ExternalLink size={14} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                      {item.desc}
-                    </p>
-                    <div className="flex gap-2">
-                      {item.tags.map((tag, j) => (
-                        <span key={j} className="text-[10px] font-label uppercase tracking-widest px-2 py-1 bg-surface-container rounded text-outline">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              ))}
-            </div>
+            {architect.portfolio.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {architect.portfolio.map((item: any, i: number) => (
+                  <motion.div 
+                    key={i}
+                    whileHover={{ y: -4 }}
+                    className="h-full"
+                  >
+                    <GlassCard className="p-6 rounded-2xl border border-white/5 hover:border-primary/20 transition-all group cursor-pointer h-full">
+                      <div className="flex justify-between items-start mb-4">
+                        <h4 className="font-bold group-hover:text-primary transition-colors">{item.title}</h4>
+                        <ExternalLink size={14} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+                        {item.desc}
+                      </p>
+                      <div className="flex gap-2">
+                        {item.tags.map((tag: string, j: number) => (
+                          <span key={j} className="text-[10px] font-label uppercase tracking-widest px-2 py-1 bg-surface-container rounded text-outline">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 border border-dashed border-white/10 rounded-2xl text-center">
+                <p className="text-on-surface-variant">No deployments showcased yet.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, ShieldCheck, Clock, DollarSign, ArrowRight } from 'lucide-react';
+import { Search, Filter, ShieldCheck, Clock, DollarSign, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/src/utils';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 
 import { JobCard } from '../components/marketplace/JobCard';
 
@@ -10,25 +12,48 @@ export const Marketplace = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+  const [firestoreJobs, setFirestoreJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const categories = ['All', 'Smart Contracts', 'Frontend', 'ZK-Proofs', 'Security Audit', 'Architecture'];
 
-  const jobs = [
-    { id: 1, title: 'Smart Contract Audit', client: 'Aether Protocol', budget: '4.50', currency: 'ETH', category: 'Security Audit', tags: ['Solidity', 'Security', 'EVM'], status: 'Locked Escrow', desc: 'Comprehensive security audit for a new yield optimization protocol on Base.' },
-    { id: 2, title: 'dApp Frontend Architect', client: 'Nexus DAO', budget: '12,500', currency: 'USDC', category: 'Frontend', tags: ['React', 'Tailwind', 'Wagmi'], status: 'Locked Escrow', desc: 'Build a minimal, high-performance dashboard for a ZK-based identity protocol.' },
-    { id: 3, title: 'ZK-Rollup Researcher', client: 'Stark Labs', budget: '8.00', currency: 'ETH', category: 'ZK-Proofs', tags: ['Cryptography', 'Rust', 'L2'], status: 'Negotiable', desc: 'Research and optimize ZK-Rollup proof generation times.' },
-    { id: 4, title: 'DeFi Index Design', client: 'Llama Finance', budget: '6,000', currency: 'USDC', category: 'Architecture', tags: ['UI Design', 'Figma', 'Web3 UX'], status: 'Locked Escrow', desc: 'Design the user experience for a new DeFi index protocol.' },
-    { id: 5, title: 'High-Frequency Bot', client: 'Velocity Labs', budget: '15.00', currency: 'ETH', category: 'Smart Contracts', tags: ['Python', 'Flashbots', 'Go'], status: 'Locked Escrow', desc: 'Develop a high-frequency trading bot for MEV opportunities.' },
-    { id: 6, title: 'Solana Indexer Service', client: 'Origin Dev', budget: '3,500', currency: 'USDC', category: 'Architecture', tags: ['Solana', 'Anchor', 'Node'], status: 'Locked Escrow', desc: 'Build a robust indexer for Solana blockchain data.' },
+  const staticJobs = [
+    { id: 's1', title: 'Smart Contract Audit', client: 'Aether Protocol', budget: '4.50', currency: 'ETH', category: 'Security Audit', tags: ['Solidity', 'Security', 'EVM'], status: 'Locked Escrow', desc: 'Comprehensive security audit for a new yield optimization protocol on Base.' },
+    { id: 's2', title: 'dApp Frontend Architect', client: 'Nexus DAO', budget: '12,500', currency: 'USDC', category: 'Frontend', tags: ['React', 'Tailwind', 'Wagmi'], status: 'Locked Escrow', desc: 'Build a minimal, high-performance dashboard for a ZK-based identity protocol.' },
+    { id: 's3', title: 'ZK-Rollup Researcher', client: 'Stark Labs', budget: '8.00', currency: 'ETH', category: 'ZK-Proofs', tags: ['Cryptography', 'Rust', 'L2'], status: 'Negotiable', desc: 'Research and optimize ZK-Rollup proof generation times.' },
   ];
 
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         job.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         job.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = activeCategory === 'All' || job.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    const q = query(collection(db, 'jobs'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const jobsData = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+        // Map Firestore fields to JobCard expected fields if necessary
+        client: doc.data().clientName || 'Anonymous',
+        desc: doc.data().description,
+      }));
+      setFirestoreJobs(jobsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching jobs:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const allJobs = [...firestoreJobs, ...staticJobs];
+
+  const filteredJobs = React.useMemo(() => {
+    return allJobs.filter(job => {
+      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           job.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           job.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = activeCategory === 'All' || job.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allJobs, searchQuery, activeCategory]);
 
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
@@ -74,12 +99,24 @@ export const Marketplace = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-        <AnimatePresence mode="popLayout">
-          {filteredJobs.map((job, i) => (
-            <JobCard key={job.id} job={job} index={i} />
-          ))}
-        </AnimatePresence>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        {loading ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-20 space-y-4">
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            <p className="text-on-surface-variant font-medium">Loading protocol jobs...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredJobs.map((job, i) => (
+              <JobCard key={job.id} job={job} index={i} />
+            ))}
+          </AnimatePresence>
+        )}
+        {!loading && filteredJobs.length === 0 && (
+          <div className="col-span-full text-center py-20">
+            <p className="text-on-surface-variant">No projects found matching your criteria.</p>
+          </div>
+        )}
       </div>
     </div>
   );

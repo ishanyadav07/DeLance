@@ -14,10 +14,17 @@ import {
   Coins, 
   Layers, 
   Target,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
+import { collection, addDoc, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useFirebase } from '../components/FirebaseProvider';
+import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { createJobOnChain } from '../services/contractService';
+import { ethers } from 'ethers';
 
 import { GlassCard } from '../components/ui/GlassCard';
 
@@ -32,8 +39,11 @@ interface Milestone {
 
 export const PostProject = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useFirebase();
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form State
   const [title, setTitle] = useState('');
@@ -43,6 +53,7 @@ export const PostProject = () => {
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
+  const [isOnChain, setIsOnChain] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>([
     { id: '1', title: 'Initial Draft & Architecture', amount: 30, description: 'Delivery of technical specifications and initial smart contract structure.' }
   ]);
@@ -83,9 +94,89 @@ export const PostProject = () => {
     setMilestones(milestones.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    if (!user) {
+      setError('You must be signed in to post a project.');
+      return;
+    }
+
+    // Basic validation
+    if (!title.trim() || !budget || !description.trim()) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    const totalPayout = milestones.reduce((acc, m) => acc + m.amount, 0);
+    if (totalPayout !== 100) {
+      setError(`Total milestone payout must equal 100%. Current total: ${totalPayout}%`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      let onChainJobId = null;
+      if (isOnChain) {
+        try {
+          const result = await createJobOnChain(title, budget);
+          onChainJobId = result.jobId; 
+        } catch (chainErr: any) {
+          console.error('On-chain deployment failed:', chainErr);
+          throw new Error(`Blockchain deployment failed: ${chainErr.message || 'Check your wallet connection.'}`);
+        }
+      }
+
+      const batch = writeBatch(db);
+      
+      // 1. Create the job document
+      const jobRef = doc(collection(db, 'jobs'));
+      const jobData = {
+        id: jobRef.id,
+        clientId: user.uid,
+        clientName: user.displayName || 'Anonymous Client',
+        title,
+        description,
+        budget: parseFloat(budget),
+        currency,
+        category,
+        status: 'open',
+        createdAt: serverTimestamp(),
+        tags,
+        isOnChain,
+        onChainJobId,
+        bidCount: 0
+      };
+      
+      try {
+        batch.set(jobRef, jobData);
+
+        // 2. Create milestones subcollection
+        milestones.forEach((m) => {
+          const milestoneRef = doc(collection(db, `jobs/${jobRef.id}/milestones`));
+          batch.set(milestoneRef, {
+            id: milestoneRef.id,
+            jobId: jobRef.id,
+            title: m.title,
+            amount: m.amount,
+            description: m.description,
+            status: 'pending'
+          });
+        });
+
+        await batch.commit();
+      } catch (dbErr: any) {
+        handleFirestoreError(dbErr, OperationType.WRITE, 'jobs');
+      }
+
+      setIsSubmitted(true);
+    } catch (err: any) {
+      console.error('Error posting project:', err);
+      setError(err.message || 'Failed to post project. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -439,13 +530,28 @@ export const PostProject = () => {
 
                         <div className="p-3 md:p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-center gap-4">
                           <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                            <Lock size={20} />
+                            <ShieldCheck size={20} />
                           </div>
-                          <div className="space-y-0.5">
-                            <p className="text-xs md:text-sm font-bold">Protocol Security</p>
+                          <div className="flex-1 space-y-0.5">
+                            <p className="text-xs md:text-sm font-bold">Platform Escrow (Standard)</p>
                             <p className="text-[9px] md:text-[10px] text-on-surface-variant leading-relaxed">
-                              By proceeding, you agree to lock <span className="text-primary font-bold">{budget} {currency}</span> into the DeLance Escrow Contract.
+                              Funds are managed by the platform and released upon your approval. No wallet required.
                             </p>
+                          </div>
+                          <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+                            <div className="text-right">
+                              <label className="text-[9px] font-bold uppercase tracking-widest text-outline block">On-Chain (Optional)</label>
+                              {!window.ethereum && (
+                                <span className="text-[7px] text-error font-bold uppercase tracking-tighter">MetaMask Needed</span>
+                              )}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              checked={isOnChain}
+                              disabled={!window.ethereum}
+                              onChange={(e) => setIsOnChain(e.target.checked)}
+                              className="w-4 h-4 rounded border-white/10 bg-surface-container-highest text-primary focus:ring-primary/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                            />
                           </div>
                         </div>
                       </div>
@@ -468,9 +574,19 @@ export const PostProject = () => {
                 {currentStep === 'review' ? (
                   <button 
                     type="submit"
-                    className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-xl font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-xl font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Lock size={16} /> Deploy & Lock
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Deploying...
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} /> Deploy & Lock
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button 
