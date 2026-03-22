@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-surface: #0e0e0f;
+  --color-surface-container-low: #131314;
+  --color-surface-container: #1a191b;
+  --color-surface-container-high: #201f21;
+  --color-surface-container-highest: #262627;
+  
+  --color-primary: #97a9ff;
+  --color-primary-container: #849aff;
+  --color-on-primary: #000000;
+  
+  --color-secondary: #d277ff;
+  --color-secondary-container: #b156ff;
+  
+  --color-tertiary: #b8ffb9;
+  --color-tertiary-container: #85e086;
+  
+  --color-error: #ff7b72;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #adaaab;
+  --color-outline: #767576;
+  --color-outline-variant: #484849;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans selection:bg-primary/30 antialiased;
+    background-image: 
+      radial-gradient(circle at 50% -20%, rgba(151, 169, 255, 0.15), transparent 50%),
+      radial-gradient(circle at 0% 100%, rgba(210, 119, 255, 0.05), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(184, 255, 185, 0.05), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-container/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  .text-gradient-primary {
+    @apply bg-linear-to-br from-primary via-secondary to-tertiary bg-clip-text text-transparent;
+  }
+
+  .btn-hover-effect {
+    @apply relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg hover:shadow-primary/20;
+  }
+
+  .grid-bg {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+    background-size: 40px 40px;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
