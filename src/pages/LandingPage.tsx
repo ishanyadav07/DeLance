@@ -76,7 +76,7 @@ export const LandingPage = () => {
       {/* Features Grid */}
       <section className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl 2xl:max-w-[96rem] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8">
-          <GlassCard className="md:col-span-8 p-8 sm:p-12 flex flex-col justify-between min-h-[400px]">
+          <GlassCard className="md:col-span-8 p-6 sm:p-10 md:p-12 flex flex-col justify-between min-h-[400px]">
             <div className="space-y-6">
               <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                 <Shield size={32} />
@@ -118,7 +118,7 @@ export const LandingPage = () => {
             </p>
           </div>
 
-          <GlassCard className="md:col-span-8 p-12 flex flex-col md:flex-row items-center gap-12">
+          <GlassCard className="md:col-span-8 p-6 sm:p-10 md:p-12 flex flex-col md:flex-row items-center gap-12">
             <div className="space-y-4 flex-1">
               <h3 className="font-headline text-3xl font-bold leading-tight">Identity of the Sovereign</h3>
               <p className="text-on-surface-variant text-base leading-relaxed">
@@ -171,7 +171,7 @@ export const LandingPage = () => {
 
       {/* CTA Section */}
       <section className="py-32 px-6">
-        <GlassCard className="max-w-7xl mx-auto p-16 md:p-24 relative overflow-hidden text-center">
+        <GlassCard className="max-w-7xl mx-auto p-8 sm:p-16 md:p-24 relative overflow-hidden text-center">
           <div className="absolute inset-0 z-0 bg-linear-to-br from-primary/5 via-transparent to-secondary/5"></div>
           <div className="relative z-10 space-y-10">
             <h2 className="font-headline text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter max-w-3xl mx-auto">

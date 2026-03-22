@@ -69,7 +69,7 @@ export const ProjectDetails = () => {
           </div>
         </div>
 
-        <GlassCard className="p-8 rounded-2xl border border-white/5 flex flex-col justify-between">
+        <GlassCard className="p-6 sm:p-8 rounded-2xl border border-white/5 flex flex-col justify-between">
           <div>
             <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant mb-2">Project Budget</p>
             <div className="flex items-baseline gap-2">
@@ -123,7 +123,7 @@ export const ProjectDetails = () => {
             </div>
           </section>
 
-          <GlassCard className="p-8 rounded-2xl space-y-6">
+          <GlassCard className="p-6 sm:p-8 rounded-2xl space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold font-headline">Apply for this Project</h2>
               <div className="flex gap-1 text-primary">
@@ -150,7 +150,7 @@ export const ProjectDetails = () => {
         </div>
 
         <div className="space-y-8">
-          <GlassCard className="p-8 rounded-2xl border border-white/5 space-y-6 sticky top-28">
+          <GlassCard className="p-6 sm:p-8 rounded-2xl border border-white/5 space-y-6 sticky top-28">
             <h3 className="font-headline font-bold text-xl">Client Reputation</h3>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl overflow-hidden">

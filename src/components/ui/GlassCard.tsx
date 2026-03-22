@@ -8,7 +8,7 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const GlassCard: React.FC<GlassCardProps> = ({ children, className, ...props }) => {
   return (
     <div 
-      className={cn("glass-card rounded-2xl p-4 sm:p-6 border border-white/5 shadow-xl relative overflow-hidden", className)}
+      className={cn("glass-card rounded-xl sm:rounded-2xl p-3.5 sm:p-6 border border-white/5 shadow-xl relative overflow-hidden", className)}
       {...props}
     >
       {children}

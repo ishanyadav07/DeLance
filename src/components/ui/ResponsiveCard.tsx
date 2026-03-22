@@ -25,12 +25,12 @@ export const ResponsiveCard: React.FC<ResponsiveCardProps> = ({
   return (
     <div 
       className={cn(
-        "flex flex-col h-auto bg-surface-container-low rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-white/5 group",
+        "flex flex-col h-auto bg-surface-container-low rounded-xl sm:rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-white/5 group",
         className
       )}
     >
       {/* Card Padding - Responsive */}
-      <div className="p-4 md:p-6 lg:p-7 flex flex-col h-full">
+      <div className="p-3.5 sm:p-5 md:p-6 lg:p-7 flex flex-col h-full">
         {/* Image Section */}
         <div className="w-full mb-4 sm:mb-6 overflow-hidden rounded-xl aspect-video">
           <img 

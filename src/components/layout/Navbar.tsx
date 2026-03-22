@@ -44,15 +44,12 @@ export const Navbar = () => {
       showSidebar 
         ? "lg:left-[calc(16rem+1rem)] lg:w-[calc(100%-16rem-2rem)] lg:-translate-x-0 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)]" 
         : "left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)]",
-      "max-w-7xl 2xl:max-w-[96rem]",
+      "w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)]",
       scrolled || !isLanding || isMobileMenuOpen
         ? "bg-surface/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/20 py-1" 
         : "bg-surface/10 backdrop-blur-md border border-white/5 rounded-2xl py-1"
     )}>
-      <div 
-        className="px-4 sm:px-6 flex justify-between items-center"
-        style={{ height: '53px', width: '939.2px', marginLeft: '4px' }}
-      >
+      <div className="px-4 sm:px-6 flex justify-between items-center h-[53px] w-full">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="relative">

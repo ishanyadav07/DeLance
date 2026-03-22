@@ -56,7 +56,7 @@ export const Dashboard = () => {
             transition={{ delay: i * 0.1 }}
             className="h-full"
           >
-            <GlassCard className="p-8 rounded-2xl relative overflow-hidden group h-full">
+            <GlassCard className="p-6 sm:p-8 rounded-2xl relative overflow-hidden group h-full">
               <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <stat.icon size={120} />
               </div>
