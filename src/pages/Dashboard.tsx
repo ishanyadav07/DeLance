@@ -97,29 +97,29 @@ export const Dashboard = () => {
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 sm:mb-16 gap-6">
-        <div className="space-y-2">
-          <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter">
+        <div className="space-y-3">
+          <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface">
             {isAdmin ? 'Admin Control Center' : `Welcome, ${user.displayName?.split(' ')[0] || 'Architect'}`}
           </h1>
-          <p className="text-on-surface-variant text-base md:text-lg max-w-lg">
+          <p className="text-on-surface-variant text-base md:text-lg max-w-lg font-sans">
             {isAdmin 
               ? `Overseeing ${myJobs.length} platform deployments and global liquidity.`
               : `Managing ${myJobs.length} active smart-contract deployments. Your total secured liquidity is currently ${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'ETH'}.`
             }
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-          <button className="flex-1 sm:flex-none px-8 py-4 rounded-xl bg-surface-container-high border border-white/5 font-bold text-sm hover:bg-surface-container-highest transition-all">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button className="flex-1 sm:flex-none px-6 py-3 rounded-lg bg-surface-container-high border border-white/5 font-bold text-xs uppercase tracking-widest hover:bg-surface-container-highest transition-all">
             Export Audit Logs
           </button>
-          <Link to="/post-project" className="flex-1 sm:flex-none px-8 py-4 rounded-xl bg-linear-to-r from-primary to-primary-container text-surface font-bold text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all text-center">
+          <Link to="/post-project" className="flex-1 sm:flex-none px-6 py-3 rounded-lg bg-linear-to-r from-primary to-primary-container text-surface font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all text-center">
             Post New Job
           </Link>
         </div>
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
         {stats.map((stat, i) => (
           <motion.div
             key={i}
@@ -129,18 +129,13 @@ export const Dashboard = () => {
             transition={{ delay: i * 0.1 }}
             className="h-full"
           >
-            <GlassCard className="p-6 sm:p-8 rounded-2xl relative overflow-hidden group h-full">
+            <GlassCard className="p-6 rounded-xl relative overflow-hidden group h-full">
               <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <stat.icon size={120} />
+                <stat.icon size={80} />
               </div>
-              <div className="absolute right-4 bottom-4 opacity-[0.02] pointer-events-none">
-                <div className="w-16 h-16 border-2 border-primary rounded-full rotate-12 flex items-center justify-center">
-                  <span className="text-[10px] font-black text-primary">DL</span>
-                </div>
-              </div>
-              <p className="font-label text-xs text-primary uppercase tracking-widest mb-2">{stat.label}</p>
-              <h3 className="font-headline text-3xl md:text-4xl font-bold mb-1">{stat.value}</h3>
-              <p className={cn("font-label text-sm", i === 0 ? "text-tertiary" : "text-on-surface-variant")}>
+              <p className="font-label text-[10px] text-primary uppercase tracking-widest mb-2">{stat.label}</p>
+              <h3 className="font-headline text-3xl font-bold mb-1">{stat.value}</h3>
+              <p className={cn("font-label text-xs", i === 0 ? "text-tertiary" : "text-on-surface-variant")}>
                 {stat.change}
               </p>
             </GlassCard>
@@ -148,51 +143,51 @@ export const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4 gap-8 lg:gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
         {/* Current Deployments */}
-        <div className="lg:col-span-2 2xl:col-span-3 space-y-8">
+        <div className="lg:col-span-2 2xl:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-headline text-2xl font-bold">Current Deployments</h2>
-            <Link to="/marketplace" className="text-primary text-sm font-medium hover:underline">View all jobs</Link>
+            <h2 className="font-headline text-xl font-bold">Current Deployments</h2>
+            <Link to="/marketplace" className="text-primary text-xs font-bold hover:underline uppercase tracking-widest">View all jobs</Link>
           </div>
           
-          <div className="bg-surface-container-low rounded-2xl border border-white/5 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px] lg:min-w-0">
+          <div className="bg-surface-container-low rounded-xl border border-white/5 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-surface-container/50 border-b border-white/5">
-                  <th className="px-6 py-4 font-label text-[10px] uppercase tracking-wider text-outline">Project Name</th>
-                  <th className="px-6 py-4 font-label text-[10px] uppercase tracking-wider text-outline">Architect / Talent</th>
-                  <th className="px-6 py-4 font-label text-[10px] uppercase tracking-wider text-outline">Escrow Budget</th>
-                  <th className="px-6 py-4 font-label text-[10px] uppercase tracking-wider text-outline text-right">Status</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Project Name</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Architect / Talent</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Escrow Budget</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {myJobs.length > 0 ? myJobs.map((job, i) => (
                   <tr key={i} onClick={() => navigate(`/project/${job.id}`)} className="hover:bg-white/5 transition-colors cursor-pointer group">
-                    <td className="px-6 py-6">
-                      <p className="font-headline font-bold group-hover:text-primary transition-colors">{job.title}</p>
-                      <p className="text-xs text-on-surface-variant mt-1">{job.category}</p>
+                    <td className="px-5 py-4">
+                      <p className="font-headline font-bold text-sm group-hover:text-primary transition-colors">{job.title}</p>
+                      <p className="text-[10px] text-on-surface-variant mt-0.5 font-sans">{job.category}</p>
                     </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-surface-container overflow-hidden flex items-center justify-center text-outline">
-                          <User size={14} />
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md bg-surface-container overflow-hidden flex items-center justify-center text-outline">
+                          <User size={12} />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{job.freelancerName || (job.status === 'open' ? 'Awaiting Bids' : 'Unassigned')}</p>
-                          <p className="font-label text-[10px] text-outline">
-                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 8)}...` : 'Protocol Network'}
+                          <p className="font-medium text-xs font-sans">{job.freelancerName || (job.status === 'open' ? 'Awaiting Bids' : 'Unassigned')}</p>
+                          <p className="font-label text-[9px] text-outline">
+                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 6)}...` : 'Protocol Network'}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-6">
-                      <p className="font-headline font-bold">{job.budget} {job.currency}</p>
-                      <p className="font-label text-[10px] text-tertiary">Secured in V3 Vault</p>
+                    <td className="px-5 py-4">
+                      <p className="font-headline font-bold text-sm">{job.budget} {job.currency}</p>
+                      <p className="font-label text-[9px] text-tertiary">Secured in V3 Vault</p>
                     </td>
-                    <td className="px-6 py-6 text-right">
+                    <td className="px-5 py-4 text-right">
                       <span className={cn(
-                        "px-3 py-1 rounded-full font-label text-[10px] uppercase tracking-tighter",
+                        "px-2 py-0.5 rounded-full font-label text-[9px] uppercase tracking-tighter",
                         job.status === 'open' ? "bg-secondary/10 text-secondary" : 
                         job.status === 'in-progress' ? "bg-primary/10 text-primary" :
                         job.status === 'submitted' ? "bg-tertiary/10 text-tertiary" :
@@ -205,7 +200,7 @@ export const Dashboard = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-on-surface-variant italic">
+                    <td colSpan={4} className="px-5 py-12 text-center text-on-surface-variant italic text-xs">
                       No active deployments found. <Link to="/post-project" className="text-primary font-bold hover:underline">Post your first project</Link> to get started.
                     </td>
                   </tr>
@@ -216,18 +211,18 @@ export const Dashboard = () => {
         </div>
 
         {/* Pulse Feed */}
-        <div className="space-y-8">
-          <h2 className="font-headline text-2xl font-bold">Pulse Feed</h2>
-          <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-linear-to-b before:from-primary/30 before:via-white/5 before:to-transparent">
+        <div className="space-y-6">
+          <h2 className="font-headline text-xl font-bold">Pulse Feed</h2>
+          <div className="relative space-y-6 before:absolute before:inset-0 before:ml-4 before:-translate-x-px before:h-full before:w-0.5 before:bg-linear-to-b before:from-primary/30 before:via-white/5 before:to-transparent">
             {pulse.map((item, i) => (
-              <div key={i} className="relative flex items-start gap-6 group">
-                <div className={cn("flex items-center justify-center w-10 h-10 rounded-full ring-4 ring-surface z-10 transition-transform group-hover:scale-110", item.bg, item.color)}>
-                  <item.icon size={16} />
+              <div key={i} className="relative flex items-start gap-4 group">
+                <div className={cn("flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-surface z-10 transition-transform group-hover:scale-110", item.bg, item.color)}>
+                  <item.icon size={14} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-label text-outline mb-1 uppercase tracking-widest">{item.time}</p>
-                  <div className="bg-surface-container-low p-4 rounded-xl border border-white/5">
-                    <p className="text-sm leading-relaxed">
+                  <p className="text-[9px] font-label text-outline mb-1 uppercase tracking-widest">{item.time}</p>
+                  <div className="bg-surface-container-low p-3 rounded-lg border border-white/5">
+                    <p className="text-xs leading-relaxed font-sans">
                       <span className="font-bold">{item.title}:</span> {item.desc}
                     </p>
                   </div>
@@ -235,7 +230,7 @@ export const Dashboard = () => {
               </div>
             ))}
           </div>
-          <button className="w-full py-3 rounded-xl border border-white/10 text-sm font-medium text-on-surface-variant hover:bg-white/5 transition-all">
+          <button className="w-full py-2 rounded-lg border border-white/10 text-[10px] font-medium text-on-surface-variant hover:bg-white/5 transition-all uppercase tracking-widest">
             View Full History
           </button>
         </div>
