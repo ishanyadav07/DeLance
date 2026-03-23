@@ -58,7 +58,7 @@ export const Navbar = () => {
 
   return (
     <nav className={cn(
-      "fixed top-4 z-50 transition-all duration-500",
+      "fixed top-0 z-50 transition-all duration-500",
       showSidebar 
         ? "lg:left-[calc(16rem+1rem)] lg:w-[calc(100%-16rem-2rem)] lg:-translate-x-0 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)]" 
         : "left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)]",

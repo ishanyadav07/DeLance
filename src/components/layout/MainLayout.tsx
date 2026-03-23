@@ -21,7 +21,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Navbar />
       <div className="flex relative z-10">
         {showSidebar && <Sidebar />}
-        <main className={`flex-1 flex flex-col w-full min-w-0 overflow-x-hidden pb-12 md:pb-24 transition-all duration-500 ${showSidebar ? 'lg:ml-[18rem] pt-24' : 'pt-24'}`}>
+        <main className={`flex-1 flex flex-col w-full min-w-0 overflow-x-hidden pb-12 md:pb-24 transition-all duration-500 ${showSidebar ? 'lg:ml-[18rem] pt-16' : 'pt-16'}`}>
           {children}
         </main>
       </div>
