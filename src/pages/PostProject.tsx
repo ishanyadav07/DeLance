@@ -15,7 +15,8 @@ import {
   Layers, 
   Target,
   Info,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
@@ -110,6 +111,13 @@ export const PostProject = () => {
       return;
     }
 
+    // Milestone title validation
+    const emptyMilestoneTitle = milestones.find(m => !m.title.trim());
+    if (emptyMilestoneTitle) {
+      setError('Please provide a title for all milestones.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -119,6 +127,13 @@ export const PostProject = () => {
       // 1. Create the job document
       const jobRef = doc(collection(db, 'jobs'));
       const parsedBudget = parseFloat(budget);
+      
+      if (isNaN(parsedBudget) || parsedBudget <= 0) {
+        setError('Please enter a valid budget amount.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const jobData = {
         id: jobRef.id,
         clientId: user.uid,
@@ -268,6 +283,12 @@ export const PostProject = () => {
           <GlassCard className="p-0 overflow-hidden border border-white/5 shadow-xl">
             <form onSubmit={handleSubmit}>
               <div className="p-6 md:p-8">
+                {error && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive text-sm mb-6">
+                    <AlertCircle size={18} />
+                    <p>{error}</p>
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
                   {currentStep === 'basics' && (
                     <motion.div

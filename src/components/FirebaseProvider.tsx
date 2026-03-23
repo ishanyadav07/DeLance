@@ -42,9 +42,9 @@ export const FirebaseProvider: React.FC<Props> = ({ children }) => {
             // Create user profile
             await setDoc(userRef, {
               uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'Anonymous',
+              photoURL: firebaseUser.photoURL || '',
               role: defaultRole, // Default role
               reputation: 0,
               completedProjects: 0,

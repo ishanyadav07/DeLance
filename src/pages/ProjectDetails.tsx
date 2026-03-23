@@ -35,6 +35,8 @@ export const ProjectDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bidSuccess, setBidSuccess] = useState(false);
   const [bids, setBids] = useState<any[]>([]);
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -120,7 +122,13 @@ export const ProjectDetails = () => {
     
     // Prevent bidding on static jobs (which don't exist in Firestore)
     if (id.startsWith('s') || id === '1') {
-      console.error("Cannot bid on demo projects.");
+      setError("Cannot bid on demo projects. Please bid on a real project posted by a user.");
+      return;
+    }
+
+    const bidAmount = parseFloat(amount);
+    if (isNaN(bidAmount) || bidAmount <= 0) {
+      setError('Please enter a valid bid amount.');
       return;
     }
 
@@ -129,9 +137,7 @@ export const ProjectDetails = () => {
       const batch = writeBatch(db);
       
       const bidRef = doc(collection(db, `jobs/${id}/bids`));
-      // Ensure budget is a number
-      const bidAmount = typeof project.budget === 'number' ? project.budget : parseFloat(project.budget.toString().replace(/,/g, '')) || 0;
-
+      
       batch.set(bidRef, {
         id: bidRef.id,
         jobId: id,
@@ -554,6 +560,23 @@ export const ProjectDetails = () => {
               </motion.div>
             ) : (
               <div className="space-y-4">
+                {error && (
+                  <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-xs font-bold mb-4">
+                    {error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Bid Amount ({project.currency})</label>
+                    <input 
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="w-full bg-surface-container-highest border-none rounded-xl px-4 py-3 focus:ring-1 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/50"
+                      placeholder="Enter your bid..."
+                    />
+                  </div>
+                </div>
                 <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Your Proposal & Approach</label>
                 <textarea 
                   value={proposal}
