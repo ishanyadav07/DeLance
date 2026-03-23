@@ -17,11 +17,11 @@ export const EscrowDetails = () => {
   const { id } = useParams();
 
   const timeline = [
-    { status: 'completed', title: 'Contract Initialized', date: 'Oct 20, 2024', desc: `Smart contract deployed on Base. 12.5 ETH deposited for Escrow #${id || '8821-B'}.` },
-    { status: 'completed', title: 'Architect Assigned', date: 'Oct 21, 2024', desc: '0x71C...4f92 (Alex R.) accepted the project terms.' },
-    { status: 'active', title: 'Milestone 1: Architecture', date: 'In Progress', desc: 'Deliverables submitted. Pending client review for release of 2.5 ETH.' },
-    { status: 'pending', title: 'Milestone 2: Implementation', date: 'Upcoming', desc: '6.0 ETH currently locked in vault.' },
-    { status: 'pending', title: 'Final Release', date: 'Upcoming', desc: '4.0 ETH currently locked in vault.' },
+    { status: 'completed', title: 'Automated Escrow Initialized', date: 'Oct 20, 2024', desc: `Automated escrow created. $12,500 deposited for Escrow #${id || '8821-B'}.` },
+    { status: 'completed', title: 'Freelancer Assigned', date: 'Oct 21, 2024', desc: 'Alex R. accepted the project terms.' },
+    { status: 'active', title: 'Milestone 1: Design', date: 'In Progress', desc: 'Deliverables submitted. Pending client review for release of $2,500.' },
+    { status: 'pending', title: 'Milestone 2: Implementation', date: 'Upcoming', desc: '$6,000 currently locked in automated escrow.' },
+    { status: 'pending', title: 'Final Release', date: 'Upcoming', desc: '$4,000 currently locked in automated escrow.' },
   ];
 
   return (
@@ -40,10 +40,10 @@ export const EscrowDetails = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-headline font-extrabold tracking-tight">Escrow #{id || '8821-B'}</h1>
-                <p className="text-on-surface-variant text-sm font-label">Contract: 0x8f2...e91a</p>
+                <p className="text-on-surface-variant text-sm font-label">ID: 8f2e91a</p>
               </div>
             </div>
-            <h2 className="text-2xl font-bold font-headline">DeFi Yield Aggregator Audit</h2>
+            <h2 className="text-2xl font-bold font-headline">Secure Payment Gateway Integration</h2>
           </header>
 
           <div className="space-y-8">
@@ -83,28 +83,28 @@ export const EscrowDetails = () => {
         <div className="space-y-8">
           <div className="bg-surface-container-low p-8 rounded-2xl border border-white/5 space-y-8">
             <div className="space-y-4">
-              <h3 className="font-headline font-bold text-xl">Vault Status</h3>
+              <h3 className="font-headline font-bold text-xl">Automated Escrow Status</h3>
               <div className="p-6 bg-surface-container rounded-xl border border-white/5 space-y-4">
                 <div className="flex justify-between items-end">
                   <p className="text-[10px] font-label text-on-surface-variant uppercase tracking-widest">Total Locked</p>
-                  <p className="text-2xl font-label font-bold">12.5 ETH</p>
+                  <p className="text-2xl font-label font-bold">$12,500</p>
                 </div>
                 <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
                   <div className="h-full bg-primary w-[20%]"></div>
                 </div>
                 <div className="flex justify-between text-[10px] font-label text-outline uppercase tracking-widest">
-                  <span>Released: 0.0 ETH</span>
-                  <span>Remaining: 12.5 ETH</span>
+                  <span>Released: $0</span>
+                  <span>Remaining: $12,500</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <h4 className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Protocol Security</h4>
+              <h4 className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Platform Security</h4>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Shield size={16} className="text-tertiary" />
-                  <span>Multi-sig Verified</span>
+                  <span>Platform Verified</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Zap size={16} className="text-primary" />
@@ -119,13 +119,13 @@ export const EscrowDetails = () => {
 
             <button className="w-full py-4 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all">
               <ExternalLink size={16} />
-              View on BaseScan
+              View Receipt
             </button>
           </div>
 
           <div className="p-6 glass-card rounded-2xl border border-primary/10">
             <p className="text-xs text-on-surface-variant leading-relaxed italic">
-              "This transaction is protected by the DeLance v1.0 Escrow Protocol. Funds are cryptographically secured and can only be released upon milestone verification or consensus."
+              "This transaction is protected by the DeLance v1.0 Automated Escrow System. Funds are secured and can only be released upon milestone verification or consensus."
             </p>
           </div>
         </div>

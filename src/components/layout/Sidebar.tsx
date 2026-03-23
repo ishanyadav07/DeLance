@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Briefcase, 
   MessageSquare, 
-  Wallet, 
   Settings, 
   HelpCircle, 
   LogOut,
@@ -40,8 +39,8 @@ export const Sidebar = () => {
             <Briefcase size={20} />
           </div>
           <div>
-            <p className="font-label text-[10px] uppercase tracking-widest text-primary">Protocol v1.0</p>
-            <p className="text-xs font-bold">Verified Architect</p>
+            <p className="font-label text-[10px] uppercase tracking-widest text-primary">Platform v1.0</p>
+            <p className="text-xs font-bold">Verified Freelancer</p>
           </div>
         </div>
         

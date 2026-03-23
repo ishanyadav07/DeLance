@@ -121,7 +121,7 @@ service cloud.firestore {
     }
 
     function isValidJob(data) {
-      return hasOnlyAllowedFields(['id', 'clientId', 'clientName', 'freelancerId', 'freelancerName', 'title', 'description', 'budget', 'currency', 'category', 'status', 'createdAt', 'tags', 'isOnChain', 'onChainJobId', 'bidCount']) &&
+      return hasOnlyAllowedFields(['id', 'clientId', 'clientName', 'clientPhotoURL', 'freelancerId', 'freelancerName', 'freelancerPhotoURL', 'title', 'description', 'budget', 'currency', 'category', 'status', 'createdAt', 'tags', 'bidCount']) &&
              data.id is string &&
              data.clientId is string &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
@@ -132,34 +132,36 @@ service cloud.firestore {
              data.createdAt is timestamp &&
              (!('tags' in data) || data.tags is list) &&
              (!('clientName' in data) || data.clientName is string) &&
+             (!('clientPhotoURL' in data) || isValidUrl(data.clientPhotoURL) || data.clientPhotoURL == "") &&
              (!('currency' in data) || data.currency is string) &&
              (!('freelancerId' in data) || data.freelancerId is string) &&
              (!('freelancerName' in data) || data.freelancerName is string) &&
-             (!('isOnChain' in data) || data.isOnChain is bool) &&
-             (!('onChainJobId' in data) || data.onChainJobId is number || data.onChainJobId == null) &&
+             (!('freelancerPhotoURL' in data) || isValidUrl(data.freelancerPhotoURL) || data.freelancerPhotoURL == "") &&
              (!('bidCount' in data) || data.bidCount is number);
     }
 
     function isValidBid(data) {
-      return hasOnlyAllowedFields(['id', 'jobId', 'freelancerId', 'freelancerName', 'amount', 'proposal', 'status', 'createdAt']) &&
-             (!('id' in data) || data.id is string) &&
+      return hasOnlyAllowedFields(['id', 'jobId', 'freelancerId', 'freelancerName', 'freelancerPhotoURL', 'amount', 'proposal', 'status', 'createdAt']) &&
              data.jobId is string &&
              data.freelancerId is string &&
              data.amount is number && data.amount > 0 &&
              data.proposal is string && data.proposal.size() > 0 && data.proposal.size() < 5000 &&
              (data.status in ['pending', 'accepted', 'rejected']) &&
              data.createdAt is timestamp &&
-             (!('freelancerName' in data) || data.freelancerName is string);
+             (!('id' in data) || data.id is string) &&
+             (!('freelancerName' in data) || data.freelancerName is string) &&
+             (!('freelancerPhotoURL' in data) || isValidUrl(data.freelancerPhotoURL) || data.freelancerPhotoURL == "");
     }
 
     function isValidMilestone(data) {
-      return hasOnlyAllowedFields(['id', 'jobId', 'title', 'amount', 'status', 'description']) &&
+      return hasOnlyAllowedFields(['id', 'jobId', 'title', 'amount', 'percentage', 'status', 'description']) &&
              data.id is string &&
              data.jobId is string &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.amount is number && data.amount > 0 &&
+             data.amount is number && data.amount >= 0 &&
              (data.status in ['pending', 'funded', 'delivered', 'approved', 'disputed']) &&
-             (!('description' in data) || data.description is string);
+             (!('description' in data) || data.description is string) &&
+             (!('percentage' in data) || data.percentage is number);
     }
 
     // ===============================================================
@@ -186,13 +188,21 @@ service cloud.firestore {
                         resource.data.status == 'open' && 
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bidCount'])
                       ) ||
-                      (isValidJob(request.resource.data) && (resource.data.clientId == request.auth.uid || isAdmin()))
+                      (
+                        isValidJob(request.resource.data) && 
+                        (
+                          resource.data.clientId == request.auth.uid || 
+                          resource.data.freelancerId == request.auth.uid ||
+                          (resource.data.status == 'open' && request.resource.data.status == 'in-progress' && request.resource.data.freelancerId == request.auth.uid) ||
+                          isAdmin()
+                        )
+                      )
                     );
       allow delete: if isAdmin();
 
       match /bids/{bidId} {
         allow read: if isAuthenticated() && (resource.data.freelancerId == request.auth.uid || get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || isAdmin());
-        allow create: if request.auth.uid != null;
+        allow create: if isAuthenticated() && isValidBid(request.resource.data) && request.resource.data.freelancerId == request.auth.uid;
         allow update: if isAuthenticated() && isValidBid(request.resource.data) && (resource.data.freelancerId == request.auth.uid || get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || isAdmin());
         allow delete: if isAdmin() || (isAuthenticated() && resource.data.freelancerId == request.auth.uid && resource.data.status == 'pending');
       }
@@ -200,8 +210,8 @@ service cloud.firestore {
       match /milestones/{milestoneId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() && isValidMilestone(request.resource.data) && (getAfter(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || isAdmin());
-        allow update: if isAuthenticated() && isValidMilestone(request.resource.data) && (getAfter(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || getAfter(/databases/$(database)/documents/jobs/$(jobId)).data.freelancerId == request.auth.uid || isAdmin());
-        allow delete: if isAdmin() || (isAuthenticated() && getAfter(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid && resource.data.status == 'pending');
+        allow update: if isAuthenticated() && isValidMilestone(request.resource.data) && (get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/jobs/$(jobId)).data.freelancerId == request.auth.uid || isAdmin());
+        allow delete: if isAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid && resource.data.status == 'pending');
       }
     }
   }

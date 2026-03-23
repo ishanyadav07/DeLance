@@ -71,12 +71,12 @@ export const Profile = () => {
     );
   }
 
-  const architect = {
-    name: profileData?.displayName || user.displayName || 'Anonymous Architect',
+  const freelancer = {
+    name: profileData?.displayName || user.displayName || 'Anonymous Freelancer',
     handle: user.uid.slice(0, 6) + '...' + user.uid.slice(-4),
-    bio: profileData?.bio || 'No bio provided yet. Protocol architect in the making.',
-    location: profileData?.location || 'Global Protocol',
-    website: profileData?.website || 'delance.protocol',
+    bio: profileData?.bio || 'No bio provided yet. Platform freelancer in the making.',
+    location: profileData?.location || 'Global Platform',
+    website: profileData?.website || 'delance.platform',
     joined: profileData?.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently',
     stats: [
       { label: 'Success Rate', value: profileData?.successRate || '100%', icon: CheckCircle2 },
@@ -97,7 +97,7 @@ export const Profile = () => {
             <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-primary to-tertiary p-1">
               <div className="w-full h-full rounded-[22px] bg-surface flex items-center justify-center overflow-hidden">
                 <img 
-                  src={user.photoURL || "https://picsum.photos/seed/architect/200/200"} 
+                  src={user.photoURL || "https://picsum.photos/seed/freelancer/200/200"} 
                   alt="Profile" 
                   loading="lazy"
                   className="w-full h-full object-cover opacity-80"
@@ -106,24 +106,24 @@ export const Profile = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-headline font-extrabold">{architect.name}</h1>
-              <p className="text-sm font-mono text-primary">{architect.handle}</p>
+              <h1 className="text-2xl font-headline font-extrabold">{freelancer.name}</h1>
+              <p className="text-sm font-mono text-primary">{freelancer.handle}</p>
             </div>
             <p className="text-sm text-on-surface-variant leading-relaxed">
-              {architect.bio}
+              {freelancer.bio}
             </p>
             <div className="space-y-3 text-sm text-on-surface-variant">
               <div className="flex items-center gap-2">
                 <MapPin size={14} />
-                <span>{architect.location}</span>
+                <span>{freelancer.location}</span>
               </div>
               <div className="flex items-center gap-2">
                 <LinkIcon size={14} />
-                <span className="text-on-surface">{architect.website}</span>
+                <span className="text-on-surface">{freelancer.website}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={14} />
-                <span>Joined {architect.joined}</span>
+                <span>Joined {freelancer.joined}</span>
               </div>
             </div>
             <div className="flex gap-4 pt-2">
@@ -141,8 +141,8 @@ export const Profile = () => {
             <div className="p-4 bg-tertiary/5 rounded-xl border border-tertiary/20 flex items-center gap-3">
               <ShieldCheck className="text-tertiary" size={20} />
               <div className="text-xs">
-                <p className="font-bold text-tertiary">Verified Architect</p>
-                <p className="text-on-surface-variant">Identity verified on-chain</p>
+                <p className="font-bold text-tertiary">Verified Freelancer</p>
+                <p className="text-on-surface-variant">Identity verified by platform</p>
               </div>
             </div>
           </div>
@@ -152,7 +152,7 @@ export const Profile = () => {
         <div className="lg:col-span-3 space-y-12">
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {architect.stats.map((stat, i) => (
+            {freelancer.stats.map((stat, i) => (
               <GlassCard key={i} className="p-6 rounded-2xl border border-white/5 space-y-2">
                 <div className="flex items-center gap-2 text-on-surface-variant">
                   <stat.icon size={14} />
@@ -170,7 +170,7 @@ export const Profile = () => {
               Technical Stack
             </h3>
             <div className="flex flex-wrap gap-2">
-              {architect.skills.map((skill, i) => (
+              {freelancer.skills.map((skill, i) => (
                 <span key={i} className="px-4 py-2 bg-surface-container rounded-full text-xs font-medium border border-white/5">
                   {skill}
                 </span>
@@ -183,13 +183,13 @@ export const Profile = () => {
             <div className="flex justify-between items-end">
               <h3 className="font-headline font-bold text-xl flex items-center gap-2">
                 <Code2 size={20} className="text-secondary" />
-                Recent Deployments
+                Recent Projects
               </h3>
               <button className="text-xs text-primary font-medium hover:underline">View All</button>
             </div>
-            {architect.portfolio.length > 0 ? (
+            {freelancer.portfolio.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {architect.portfolio.map((item: any, i: number) => (
+                {freelancer.portfolio.map((item: any, i: number) => (
                   <motion.div 
                     key={i}
                     whileHover={{ y: -4 }}
@@ -216,7 +216,7 @@ export const Profile = () => {
               </div>
             ) : (
               <div className="p-12 border border-dashed border-white/10 rounded-2xl text-center">
-                <p className="text-on-surface-variant">No deployments showcased yet.</p>
+                <p className="text-on-surface-variant">No projects showcased yet.</p>
               </div>
             )}
           </div>

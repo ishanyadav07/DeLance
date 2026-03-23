@@ -54,20 +54,20 @@ export const LandingPage = () => {
           >
             <div className="inline-flex items-center gap-4 px-4 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              <span className="font-label text-primary tracking-[0.2em] uppercase text-[10px] font-bold">Protocol v1.0 Live</span>
+              <span className="font-label text-primary tracking-[0.2em] uppercase text-[10px] font-bold">Platform v1.0 Live</span>
             </div>
             
             <div className="space-y-4">
               <h1 className="font-headline text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-[0.9] uppercase">
-                The Sovereign <br /> 
-                <span className="text-gradient-primary">Architect's</span> <br /> 
+                The Independent <br /> 
+                <span className="text-gradient-primary">Professional's</span> <br /> 
                 Marketplace
               </h1>
               <div className="h-1 w-24 bg-primary/30 rounded-full"></div>
             </div>
 
             <p className="text-on-surface-variant text-base md:text-lg max-w-2xl leading-relaxed font-medium opacity-80">
-              Eliminate intermediaries with a trustless protocol designed for high-end digital engineering and sovereign creative talent.
+              Eliminate intermediaries with a secure platform designed for high-end digital engineering and sovereign creative talent.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-start gap-6 pt-4">
@@ -94,7 +94,7 @@ export const LandingPage = () => {
               <Shield size={14} /> Verified
             </div>
             <div className="flex items-center justify-start gap-2 font-label text-xs tracking-widest uppercase">
-              <Lock size={14} /> Escrowed
+              <Lock size={14} /> Automated Escrow
             </div>
             <div className="flex items-center justify-start gap-2 font-label text-xs tracking-widest uppercase">
               <Zap size={14} /> Instant
@@ -114,9 +114,9 @@ export const LandingPage = () => {
               <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                 <Shield size={32} />
               </div>
-              <h3 className="font-headline text-4xl font-bold tracking-tight">Escrow Protocol</h3>
+              <h3 className="font-headline text-4xl font-bold tracking-tight">Automated Escrow</h3>
               <p className="text-on-surface-variant text-lg leading-relaxed max-w-md">
-                Smart contracts hold funds securely until milestones are met. No more chasing payments or worrying about scope creep.
+                Our Automated Escrow System holds funds securely until milestones are met. No more chasing payments or worrying about scope creep.
               </p>
             </div>
             <div className="mt-8 flex items-center gap-4">
@@ -137,7 +137,7 @@ export const LandingPage = () => {
             </div>
             <h3 className="font-headline text-2xl font-bold mb-4">Low Fees</h3>
             <p className="text-on-surface-variant text-base leading-relaxed">
-              Industry-low 1% protocol fee. We prioritize the architect over the middleman.
+              Industry-low 1% platform fee. We prioritize the freelancer over the middleman.
             </p>
           </div>
 
@@ -147,18 +147,18 @@ export const LandingPage = () => {
             </div>
             <h3 className="font-headline text-2xl font-bold mb-4">Global Talent</h3>
             <p className="text-on-surface-variant text-base leading-relaxed">
-              Permissionless access to top-tier architects from every corner of the globe.
+              Permissionless access to top-tier freelancers from every corner of the globe.
             </p>
           </div>
 
           <GlassCard className="md:col-span-8 p-6 sm:p-10 md:p-12 flex flex-col md:flex-row items-center gap-12">
             <div className="space-y-4 flex-1">
-              <h3 className="font-headline text-3xl font-bold leading-tight">Identity of the Sovereign</h3>
+              <h3 className="font-headline text-3xl font-bold leading-tight">Identity of the Independent</h3>
               <p className="text-on-surface-variant text-base leading-relaxed">
-                Own your reputation. On-chain credentials and soulbound tokens prove your mastery without centralized silos.
+                Own your reputation. Verified credentials and platform history prove your mastery without centralized silos.
               </p>
               <button className="inline-flex items-center gap-2 text-primary font-label text-sm uppercase font-bold tracking-widest hover:gap-4 transition-all">
-                Learn About Rep-v1 <ArrowRight size={16} />
+                Learn About Reputation v1 <ArrowRight size={16} />
               </button>
             </div>
             <div className="w-full md:w-48 aspect-square rounded-2xl bg-linear-to-tr from-surface-container-highest to-primary/10 flex items-center justify-center border border-white/5">
@@ -173,7 +173,7 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-end mb-24 gap-8">
             <div className="space-y-4">
-              <h2 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter">Trust Through Code</h2>
+              <h2 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter">Trust Through Automation</h2>
               <p className="text-on-surface-variant text-lg">The architecture of a secure collaboration.</p>
             </div>
             <div className="font-label text-white/10 text-7xl font-bold select-none leading-none">01-03</div>
@@ -183,9 +183,9 @@ export const LandingPage = () => {
             <div className="hidden md:block absolute top-[40px] left-0 w-full h-[1px] bg-linear-to-r from-transparent via-outline-variant/30 to-transparent"></div>
             
             {[
-              { step: 'Step One', title: 'Post Project', desc: 'Define your scope, milestones, and budget. Deposit funds into the smart contract escrow.', icon: Shield, color: 'text-primary' },
-              { step: 'Step Two', title: 'Lock & Work', desc: 'Funds are cryptographically locked. The architect begins work with payment guaranteed by code.', icon: Key, color: 'text-secondary' },
-              { step: 'Step Three', title: 'Release', desc: 'Upon milestone approval, funds are instantly released to the architect\'s wallet. Verified.', icon: CheckCircle, color: 'text-tertiary' },
+              { step: 'Step One', title: 'Post Project', desc: 'Define your scope, milestones, and budget. Deposit funds into the secure Automated Escrow.', icon: Shield, color: 'text-primary' },
+              { step: 'Step Two', title: 'Lock & Work', desc: 'Funds are securely locked. The freelancer begins work with payment guaranteed by the platform.', icon: Key, color: 'text-secondary' },
+              { step: 'Step Three', title: 'Release', desc: 'Upon milestone approval, funds are instantly released to the freelancer\'s account. Verified.', icon: CheckCircle, color: 'text-tertiary' },
             ].map((item, i) => (
               <div key={i} className="relative z-10 space-y-8">
                 <div className="w-20 h-20 rounded-full bg-surface-container-highest flex items-center justify-center border-4 border-surface shadow-xl">
@@ -211,7 +211,7 @@ export const LandingPage = () => {
               Ready to build the future?
             </h2>
             <p className="text-on-surface-variant text-xl max-w-xl mx-auto">
-              Join the next generation of architects and creators on the most secure Web3 marketplace.
+              Join the next generation of freelancers and creators on the most secure freelance marketplace.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button 
@@ -234,7 +234,7 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col items-center md:items-start gap-2">
             <span className="font-headline font-bold text-white text-lg">DeLance</span>
-            <p>© 2024 DeLance Protocol. Built for the Sovereign Architect.</p>
+            <p>© 2024 DeLance. Built for the Independent Professional.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-8">
             <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>

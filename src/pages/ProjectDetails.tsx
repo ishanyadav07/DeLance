@@ -19,8 +19,6 @@ import { doc, getDoc, collection, onSnapshot, query, addDoc, serverTimestamp, up
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
-import { acceptJobOnChain, submitWorkOnChain, approveWorkOnChain, getJobFromChain } from '../services/contractService';
-import { ethers } from 'ethers';
 
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
@@ -36,18 +34,15 @@ export const ProjectDetails = () => {
   const [proposal, setProposal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bidSuccess, setBidSuccess] = useState(false);
-  const [onChainJob, setOnChainJob] = useState<any>(null);
-  const [contractLoading, setContractLoading] = useState(false);
-  const [contractError, setContractError] = useState<string | null>(null);
   const [bids, setBids] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
 
     const staticJobs = [
-      { id: 's1', title: 'Smart Contract Audit', client: 'Aether Protocol', budget: '4.50', currency: 'ETH', category: 'Security Audit', tags: ['Solidity', 'Security', 'EVM'], status: 'Locked Escrow', desc: 'Comprehensive security audit for a new yield optimization protocol on Base.' },
-      { id: 's2', title: 'dApp Frontend Architect', client: 'Nexus DAO', budget: '12,500', currency: 'USDC', category: 'Frontend', tags: ['React', 'Tailwind', 'Wagmi'], status: 'Locked Escrow', desc: 'Build a minimal, high-performance dashboard for a ZK-based identity protocol.' },
-      { id: 's3', title: 'ZK-Rollup Researcher', client: 'Stark Labs', budget: '8.00', currency: 'ETH', category: 'ZK-Proofs', tags: ['Cryptography', 'Rust', 'L2'], status: 'Negotiable', desc: 'Research and optimize ZK-Rollup proof generation times.' },
+      { id: 's1', title: 'Security Audit for E-commerce', client: 'Aether Retail', budget: '4,500', currency: 'USD', category: 'Security Audit', tags: ['Node.js', 'Security', 'React'], status: 'Automated Escrow', desc: 'Comprehensive security audit for a new e-commerce platform.' },
+      { id: 's2', title: 'SaaS Frontend Developer', client: 'Nexus Corp', budget: '12,500', currency: 'USD', category: 'Frontend', tags: ['React', 'Tailwind', 'TypeScript'], status: 'Automated Escrow', desc: 'Build a minimal, high-performance dashboard for a new SaaS product.' },
+      { id: 's3', title: 'Database Optimization Expert', client: 'Stark Labs', budget: '8,000', currency: 'USD', category: 'Backend', tags: ['PostgreSQL', 'Performance', 'Backend'], status: 'Negotiable', desc: 'Research and optimize complex database queries for a large-scale enterprise application.' },
     ];
 
     const fetchProject = async () => {
@@ -71,7 +66,7 @@ export const ProjectDetails = () => {
           if (staticJob) {
             setProject(staticJob);
             setMilestones([
-              { title: 'Initial Architecture Design', description: 'Detailed spec and flowcharts', amount: 30, status: 'pending' },
+              { title: 'Initial Design & Spec', description: 'Detailed spec and flowcharts', amount: 30, status: 'pending' },
               { title: 'Core Implementation', description: 'Main logic and unit tests', amount: 50, status: 'pending' },
               { title: 'Final Review & Handover', description: 'Documentation and deployment', amount: 20, status: 'pending' }
             ]);
@@ -91,25 +86,6 @@ export const ProjectDetails = () => {
 
   useEffect(() => {
     if (!id || !user || !project) return;
-
-    // Fetch on-chain data if applicable
-    const fetchOnChainData = async () => {
-      if (project?.isOnChain && project?.onChainJobId !== undefined) {
-        try {
-          setContractLoading(true);
-          const chainJob = await getJobFromChain(project.onChainJobId);
-          setOnChainJob(chainJob);
-        } catch (err) {
-          console.error("Error fetching on-chain job:", err);
-        } finally {
-          setContractLoading(false);
-        }
-      }
-    };
-
-    if (project?.isOnChain) {
-      fetchOnChainData();
-    }
 
     // Real-time milestones
     const milestonesQuery = query(collection(db, `jobs/${id}/milestones`));
@@ -153,23 +129,25 @@ export const ProjectDetails = () => {
       const batch = writeBatch(db);
       
       const bidRef = doc(collection(db, `jobs/${id}/bids`));
+      // Ensure budget is a number
+      const bidAmount = typeof project.budget === 'number' ? project.budget : parseFloat(project.budget.toString().replace(/,/g, '')) || 0;
+
       batch.set(bidRef, {
         id: bidRef.id,
         jobId: id,
         freelancerId: user.uid,
         freelancerName: user.displayName || 'Anonymous',
-        amount: Number(project.budget),
+        freelancerPhotoURL: user.photoURL || '',
+        amount: bidAmount,
         proposal,
         status: 'pending',
         createdAt: serverTimestamp()
       });
 
-      /*
       const jobRef = doc(db, 'jobs', id);
       batch.update(jobRef, {
-        bidCount: increment(1)
+        bidCount: (project.bidCount || 0) + 1
       });
-      */
 
       try {
         await batch.commit();
@@ -186,124 +164,56 @@ export const ProjectDetails = () => {
     }
   };
 
-  const handleAcceptOnChain = async () => {
-    if (!project?.onChainJobId) return;
-    setContractLoading(true);
-    setContractError(null);
-    try {
-      await acceptJobOnChain(project.onChainJobId);
-      // Update Firestore status
-      await updateDoc(doc(db, 'jobs', id!), {
-        status: 'in-progress',
-        freelancerId: user?.uid
-      });
-      // Refresh on-chain data
-      const chainJob = await getJobFromChain(project.onChainJobId);
-      setOnChainJob(chainJob);
-    } catch (err: any) {
-      setContractError(err.message || "Failed to accept job on-chain");
-    } finally {
-      setContractLoading(false);
-    }
-  };
-
-  const handleSubmitWorkOnChain = async () => {
-    if (!project?.onChainJobId) return;
-    const workLink = prompt("Enter your work link (e.g. GitHub repo or hosted site):");
-    if (!workLink) return;
-
-    setContractLoading(true);
-    setContractError(null);
-    try {
-      await submitWorkOnChain(project.onChainJobId, workLink);
-      // Update Firestore
-      await updateDoc(doc(db, 'jobs', id!), {
-        status: 'submitted',
-        workLink
-      });
-      // Refresh on-chain data
-      const chainJob = await getJobFromChain(project.onChainJobId);
-      setOnChainJob(chainJob);
-    } catch (err: any) {
-      setContractError(err.message || "Failed to submit work on-chain");
-    } finally {
-      setContractLoading(false);
-    }
-  };
-
-  const handleApproveOnChain = async () => {
-    if (!project?.onChainJobId) return;
-    setContractLoading(true);
-    setContractError(null);
-    try {
-      await approveWorkOnChain(project.onChainJobId);
-      // Update Firestore
-      await updateDoc(doc(db, 'jobs', id!), {
-        status: 'completed'
-      });
-      // Refresh on-chain data
-      const chainJob = await getJobFromChain(project.onChainJobId);
-      setOnChainJob(chainJob);
-    } catch (err: any) {
-      setContractError(err.message || "Failed to approve work on-chain");
-    } finally {
-      setContractLoading(false);
-    }
-  };
-
   const handleAcceptPlatform = async () => {
-    if (!id) return;
-    setContractLoading(true);
+    if (!id || !user) return;
     try {
-      await updateDoc(doc(db, 'jobs', id), {
+      setIsSubmitting(true);
+      const batch = writeBatch(db);
+      
+      // 1. Update job status and assigned freelancer
+      const jobRef = doc(db, 'jobs', id);
+      batch.update(jobRef, {
         status: 'in-progress',
-        freelancerId: user?.uid,
-        freelancerName: user?.displayName || 'Anonymous'
+        freelancerId: user.uid,
+        freelancerName: user.displayName || 'Anonymous'
       });
-      setProject((prev: any) => ({ ...prev, status: 'in-progress', freelancerId: user?.uid }));
+
+      // 2. Update all milestones to 'funded'
+      milestones.forEach(m => {
+        const milestoneRef = doc(db, `jobs/${id}/milestones`, m.id);
+        batch.update(milestoneRef, { status: 'funded' });
+      });
+
+      await batch.commit();
+      setProject((prev: any) => ({ ...prev, status: 'in-progress', freelancerId: user.uid, freelancerName: user.displayName || 'Anonymous' }));
     } catch (err) {
       console.error("Error accepting job:", err);
     } finally {
-      setContractLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleSubmitWorkPlatform = async () => {
-    if (!id) return;
-    const workLink = prompt("Enter your work link (e.g. GitHub repo or hosted site):");
-    if (!workLink) return;
-    setContractLoading(true);
-    try {
-      await updateDoc(doc(db, 'jobs', id), {
-        status: 'submitted',
-        workLink
-      });
-      setProject((prev: any) => ({ ...prev, status: 'submitted', workLink }));
-    } catch (err) {
-      console.error("Error submitting work:", err);
-    } finally {
-      setContractLoading(false);
-    }
-  };
 
-  const handleApprovePlatform = async () => {
-    if (!id) return;
-    setContractLoading(true);
+
+
+  const handleApproveMilestone = async (milestoneId: string) => {
+    if (!id || !user) return;
     try {
-      await updateDoc(doc(db, 'jobs', id), {
-        status: 'completed'
-      });
-      setProject((prev: any) => ({ ...prev, status: 'completed' }));
+      const milestoneRef = doc(db, `jobs/${id}/milestones`, milestoneId);
+      await updateDoc(milestoneRef, { status: 'approved' });
+      
+      // Check if all milestones are approved
+      const allApproved = milestones.every(m => m.id === milestoneId ? true : m.status === 'approved');
+      if (allApproved) {
+        await updateDoc(doc(db, 'jobs', id), { status: 'completed' });
+      }
     } catch (err) {
-      console.error("Error approving work:", err);
-    } finally {
-      setContractLoading(false);
+      console.error("Error approving milestone:", err);
     }
   };
 
   const handleAdminStatusUpdate = async (newStatus: string) => {
     if (!id) return;
-    setContractLoading(true);
     try {
       await updateDoc(doc(db, 'jobs', id), {
         status: newStatus
@@ -311,15 +221,13 @@ export const ProjectDetails = () => {
       setProject((prev: any) => ({ ...prev, status: newStatus }));
     } catch (err) {
       console.error("Error updating status as admin:", err);
-    } finally {
-      setContractLoading(false);
     }
   };
 
   const handleAcceptBid = async (bid: any) => {
     if (!id || !project) return;
-    setContractLoading(true);
     try {
+      setIsSubmitting(true);
       const batch = writeBatch(db);
       
       // 1. Update the job status and assigned freelancer
@@ -327,16 +235,23 @@ export const ProjectDetails = () => {
       batch.update(jobRef, {
         status: 'in-progress',
         freelancerId: bid.freelancerId,
-        freelancerName: bid.freelancerName
+        freelancerName: bid.freelancerName || 'Anonymous',
+        freelancerPhotoURL: bid.freelancerPhotoURL || ''
       });
 
-      // 2. Update the bid status
+      // 2. Update all milestones to 'funded'
+      milestones.forEach(m => {
+        const milestoneRef = doc(db, `jobs/${id}/milestones`, m.id);
+        batch.update(milestoneRef, { status: 'funded' });
+      });
+
+      // 3. Update the bid status
       const bidRef = doc(db, `jobs/${id}/bids`, bid.id);
       batch.update(bidRef, {
         status: 'accepted'
       });
 
-      // 3. Reject other bids (optional but good for UX)
+      // 4. Reject other bids (optional but good for UX)
       bids.forEach(b => {
         if (b.id !== bid.id && b.status === 'pending') {
           const otherBidRef = doc(db, `jobs/${id}/bids`, b.id);
@@ -349,12 +264,12 @@ export const ProjectDetails = () => {
         ...prev, 
         status: 'in-progress', 
         freelancerId: bid.freelancerId,
-        freelancerName: bid.freelancerName 
+        freelancerName: bid.freelancerName || 'Anonymous'
       }));
     } catch (err) {
       console.error("Error accepting bid:", err);
     } finally {
-      setContractLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -391,111 +306,35 @@ export const ProjectDetails = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-10 sm:mb-12">
         <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-wrap gap-3">
-            <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-tertiary/20">Verified Protocol</span>
-            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-primary/20">Smart Contract Escrow</span>
+            <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-tertiary/20">Verified Client</span>
+            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-primary/20">Automated Escrow</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold font-headline tracking-tight leading-tight">
             {project.title}
           </h1>
-          {project.isOnChain ? (
-            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                  <Lock size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">On-Chain Escrow Active</p>
-                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">Status: {
-                    onChainJob ? [
-                      'Open', 'In Progress', 'Submitted', 'Completed', 'Disputed'
-                    ][onChainJob.status] : 'Loading...'
-                  }</p>
-                </div>
+          <div className="p-4 bg-surface-container-highest/30 border border-white/5 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                <ShieldCheck size={20} />
               </div>
-              
-              <div className="flex gap-2">
-                {/* Accept Job Button (Freelancer) */}
-                {onChainJob?.status === 0 && user?.uid !== project.clientId && (
-                  <button 
-                    onClick={handleAcceptOnChain}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Accept Job On-Chain'}
-                  </button>
-                )}
-
-                {/* Submit Work Button (Freelancer) */}
-                {onChainJob?.status === 1 && user?.uid === onChainJob.freelancer.toLowerCase() && (
-                  <button 
-                    onClick={handleSubmitWorkOnChain}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-tertiary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Submit Work On-Chain'}
-                  </button>
-                )}
-
-                {/* Approve Work Button (Client) */}
-                {onChainJob?.status === 2 && user?.uid === project.clientId && (
-                  <button 
-                    onClick={handleApproveOnChain}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Approve & Release Funds'}
-                  </button>
-                )}
+              <div>
+                <p className="text-sm font-bold">Automated Escrow Managed</p>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">Status: {project.status}</p>
               </div>
             </div>
-          ) : (
-            <div className="p-4 bg-surface-container-highest/30 border border-white/5 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">Platform Escrow Managed</p>
-                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">Status: {project.status}</p>
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                {/* Accept Job Button (Freelancer) */}
-                {project.status === 'open' && user?.uid !== project.clientId && (
-                  <button 
-                    onClick={handleAcceptPlatform}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Accept Project'}
-                  </button>
-                )}
-
-                {/* Submit Work Button (Freelancer) */}
-                {project.status === 'in-progress' && user?.uid === project.freelancerId && (
-                  <button 
-                    onClick={handleSubmitWorkPlatform}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-tertiary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Submit Work'}
-                  </button>
-                )}
-
-                {/* Approve Work Button (Client) */}
-                {project.status === 'submitted' && user?.uid === project.clientId && (
-                  <button 
-                    onClick={handleApprovePlatform}
-                    disabled={contractLoading}
-                    className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                  >
-                    {contractLoading ? 'Processing...' : 'Approve & Release'}
-                  </button>
-                )}
-              </div>
+            
+            <div className="flex gap-2">
+              {/* Accept Job Button (Freelancer) */}
+              {project.status === 'open' && user?.uid !== project.clientId && (
+                <button 
+                  onClick={handleAcceptPlatform}
+                  className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                  Accept Project
+                </button>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Admin Controls */}
           {isAdmin && (
@@ -509,7 +348,6 @@ export const ProjectDetails = () => {
                   <button 
                     key={s}
                     onClick={() => handleAdminStatusUpdate(s)}
-                    disabled={contractLoading}
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all",
                       project.status === s ? "bg-error text-white" : "bg-error/10 text-error hover:bg-error/20"
@@ -555,10 +393,9 @@ export const ProjectDetails = () => {
                       <div className="flex flex-row md:flex-col gap-2 justify-end">
                         <button 
                           onClick={() => handleAcceptBid(bid)}
-                          disabled={contractLoading}
                           className="px-6 py-3 bg-primary text-surface rounded-xl font-bold text-[10px] uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
                         >
-                          {contractLoading ? 'Processing...' : 'Accept Proposal'}
+                          Accept Proposal
                         </button>
                         <button className="px-6 py-3 bg-white/5 text-outline rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all">
                           View Profile
@@ -573,9 +410,6 @@ export const ProjectDetails = () => {
                 )}
               </div>
             </div>
-          )}
-          {contractError && (
-            <p className="text-[10px] text-error font-bold uppercase tracking-wider bg-error/10 p-2 rounded-lg">{contractError}</p>
           )}
             <div className="flex flex-wrap items-center gap-6 text-on-surface-variant text-sm">
               <div className="flex items-center gap-2">
@@ -600,12 +434,12 @@ export const ProjectDetails = () => {
               <span className="text-4xl font-bold font-headline">{project.budget}</span>
               <span className="text-primary font-label font-bold text-xl uppercase">{project.currency}</span>
             </div>
-            <p className="text-on-surface-variant font-label text-sm mt-1">≈ $32,450.00 USDC</p>
+            <p className="text-on-surface-variant font-label text-sm mt-1">Total Budget</p>
           </div>
           <div className="mt-6 pt-6 border-t border-white/5">
             <div className="flex items-center gap-2 text-tertiary">
               <Lock size={16} fill="currentColor" />
-              <span className="text-xs font-label uppercase font-bold tracking-widest">Escrow Protected</span>
+              <span className="text-xs font-label uppercase font-bold tracking-widest">Automated Escrow Protected</span>
             </div>
           </div>
         </GlassCard>
@@ -616,13 +450,15 @@ export const ProjectDetails = () => {
           <section className="space-y-6">
             <h2 className="text-2xl font-bold font-headline">Scope of Work</h2>
             <div className="text-on-surface-variant leading-relaxed space-y-4 text-lg">
-              <p>{project.desc}</p>
-              <ul className="list-none space-y-3">
-                <li className="flex gap-3"><span className="text-primary">•</span> Development of vault strategies for LSTs.</li>
-                <li className="flex gap-3"><span className="text-primary">•</span> Implementing multi-sig controlled emergency shutdowns.</li>
-                <li className="flex gap-3"><span className="text-primary">•</span> Integration with Chainlink Data Feeds and CCIP.</li>
-                <li className="flex gap-3"><span className="text-primary">•</span> Full coverage unit testing (Hardhat/Foundry).</li>
-              </ul>
+              <p>{project.description || project.desc}</p>
+              {!project.description && (
+                <ul className="list-none space-y-3">
+                  <li className="flex gap-3"><span className="text-primary">•</span> Development of secure storage strategies.</li>
+                  <li className="flex gap-3"><span className="text-primary">•</span> Implementing admin controlled emergency shutdowns.</li>
+                  <li className="flex gap-3"><span className="text-primary">•</span> Integration with external data providers.</li>
+                  <li className="flex gap-3"><span className="text-primary">•</span> Full coverage unit testing (Standard Frameworks).</li>
+                </ul>
+              )}
             </div>
           </section>
 
@@ -632,15 +468,56 @@ export const ProjectDetails = () => {
               {milestones.length > 0 ? milestones.map((m, i) => (
                 <GlassCard key={i} className={cn(
                   "p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-l-4",
-                  m.status === 'funded' || m.status === 'delivered' ? "border-primary" : "border-outline-variant"
+                  m.status === 'funded' || m.status === 'delivered' ? "border-primary" : 
+                  m.status === 'approved' ? "border-success" : "border-outline-variant"
                 )}>
-                  <div>
-                    <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>{m.title}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>{m.title}</p>
+                      <span className={cn(
+                        "text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm",
+                        m.status === 'pending' ? "bg-surface-container text-outline" :
+                        m.status === 'funded' ? "bg-primary/20 text-primary" :
+                        m.status === 'delivered' ? "bg-tertiary/20 text-tertiary" :
+                        m.status === 'approved' ? "bg-success/20 text-success" :
+                        "bg-error/20 text-error"
+                      )}>
+                        {m.status}
+                      </span>
+                    </div>
                     <p className="text-xs text-on-surface-variant font-label mt-1">{m.description || 'No deliverables specified'}</p>
                   </div>
-                  <div className="text-left sm:text-right">
-                    <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>{m.amount}%</p>
-                    <p className={cn("text-[10px] font-label uppercase font-bold", m.status === 'funded' ? "text-tertiary" : "text-on-surface-variant")}>{m.status}</p>
+                  <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="text-left sm:text-right">
+                      <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>
+                        {m.amount.toLocaleString()} <span className="text-[10px] text-primary">{project.currency}</span>
+                      </p>
+                      <p className="text-[9px] font-label text-on-surface-variant uppercase tracking-widest">
+                        {m.percentage || Math.round((m.amount / project.budget) * 100)}% of total
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {/* Freelancer: Deliver */}
+                      {m.status === 'funded' && user?.uid === project.freelancerId && (
+                        <Link 
+                          to={`/submit-work/${id}/${m.id}`}
+                          className="px-3 py-1.5 bg-tertiary text-surface rounded-lg text-[9px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
+                        >
+                          Deliver
+                        </Link>
+                      )}
+                      
+                      {/* Client: Approve */}
+                      {m.status === 'delivered' && user?.uid === project.clientId && (
+                        <button 
+                          onClick={() => handleApproveMilestone(m.id)}
+                          className="px-3 py-1.5 bg-primary text-surface rounded-lg text-[9px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
+                        >
+                          Approve
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </GlassCard>
               )) : (
@@ -707,7 +584,7 @@ export const ProjectDetails = () => {
             <h3 className="font-headline font-bold text-xl">Client Reputation</h3>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-container">
-                <img src={client?.photoURL || `https://picsum.photos/seed/${project.client}/200/200`} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                <img src={client?.photoURL || project.clientPhotoURL || `https://picsum.photos/seed/${project.client}/200/200`} alt="" loading="lazy" referrerPolicy="no-referrer" />
               </div>
               <div>
                 <p className="font-bold font-headline">{client?.displayName || project.client}</p>
@@ -717,7 +594,7 @@ export const ProjectDetails = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-surface-container p-4 rounded-xl text-center">
                 <p className="text-[10px] text-on-surface-variant font-label uppercase tracking-widest mb-1">Spent</p>
-                <p className="font-bold font-headline text-lg">{(client?.completedProjects || 0) * 12}+ ETH</p>
+                <p className="font-bold font-headline text-lg">${(client?.completedProjects || 0) * 1200}+</p>
               </div>
               <div className="bg-surface-container p-4 rounded-xl text-center">
                 <p className="text-[10px] text-on-surface-variant font-label uppercase tracking-widest mb-1">Hires</p>
@@ -727,8 +604,8 @@ export const ProjectDetails = () => {
             <div className="space-y-4 pt-4">
               <h4 className="font-label text-xs uppercase tracking-widest text-on-surface-variant">Recent Activity</h4>
               {[
-                { text: '"Top tier client, clear specs."', author: 'dev_architect.eth' },
-                { text: '"Prompt payments via escrow."', author: 'solidity_master' },
+                { text: '"Top tier client, clear specs."', author: 'dev_freelancer' },
+                { text: '"Prompt payments via escrow."', author: 'backend_master' },
               ].map((review, i) => (
                 <div key={i} className="text-sm space-y-1">
                   <p className="font-medium">{review.text}</p>

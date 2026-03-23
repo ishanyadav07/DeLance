@@ -60,8 +60,8 @@ export const Dashboard = () => {
 
   const stats = [
     { 
-      label: isAdmin ? 'Total Platform Liquidity' : 'Total Budget Locked', 
-      value: `${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'ETH'}`, 
+      label: isAdmin ? 'Total Platform Volume' : 'Total Budget in Automated Escrow', 
+      value: `${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'USD'}`, 
       change: `${myJobs.length} total ${isAdmin ? 'platform' : 'personal'} jobs`, 
       icon: Lock, 
       color: 'text-primary' 
@@ -83,10 +83,10 @@ export const Dashboard = () => {
   ];
 
   const pulse = [
-    { time: 'Just now', title: 'Dashboard Connected', desc: 'Your real-time protocol dashboard is now active and synced with Firestore.', icon: CheckCircle, color: 'text-tertiary', bg: 'bg-tertiary/20' },
+    { time: 'Just now', title: 'Dashboard Connected', desc: 'Your real-time platform dashboard is now active and synced with Firestore.', icon: CheckCircle, color: 'text-tertiary', bg: 'bg-tertiary/20' },
     ...myJobs.slice(0, 2).map(job => ({
       time: job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recently',
-      title: 'Project Deployed',
+      title: 'Project Posted',
       desc: `"${job.title}" is now live and accepting bids from the network.`,
       icon: Rocket,
       color: 'text-primary',
@@ -99,12 +99,12 @@ export const Dashboard = () => {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 sm:mb-16 gap-6">
         <div className="space-y-3">
           <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface">
-            {isAdmin ? 'Admin Control Center' : `Welcome, ${user.displayName?.split(' ')[0] || 'Architect'}`}
+            {isAdmin ? 'Admin Control Center' : `Welcome, ${user?.displayName?.split(' ')[0] || 'Freelancer'}`}
           </h1>
           <p className="text-on-surface-variant text-base md:text-lg max-w-lg font-sans">
             {isAdmin 
-              ? `Overseeing ${myJobs.length} platform deployments and global liquidity.`
-              : `Managing ${myJobs.length} active smart-contract deployments. Your total secured liquidity is currently ${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'ETH'}.`
+              ? `Overseeing ${myJobs.length} platform projects and global volume.`
+              : `Managing ${myJobs.length} active projects. Your total secured budget is currently ${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'USD'}.`
             }
           </p>
         </div>
@@ -144,10 +144,10 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
-        {/* Current Deployments */}
+        {/* Current Projects */}
         <div className="lg:col-span-2 2xl:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-headline text-xl font-bold">Current Deployments</h2>
+            <h2 className="font-headline text-xl font-bold">Current Projects</h2>
             <Link to="/marketplace" className="text-primary text-xs font-bold hover:underline uppercase tracking-widest">View all jobs</Link>
           </div>
           
@@ -156,8 +156,8 @@ export const Dashboard = () => {
               <thead>
                 <tr className="bg-surface-container/50 border-b border-white/5">
                   <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Project Name</th>
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Architect / Talent</th>
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Escrow Budget</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Freelancer / Talent</th>
+                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Automated Escrow</th>
                   <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline text-right">Status</th>
                 </tr>
               </thead>
@@ -176,14 +176,14 @@ export const Dashboard = () => {
                         <div>
                           <p className="font-medium text-xs font-sans">{job.freelancerName || (job.status === 'open' ? 'Awaiting Bids' : 'Unassigned')}</p>
                           <p className="font-label text-[9px] text-outline">
-                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 6)}...` : 'Protocol Network'}
+                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 6)}...` : 'Freelancer Network'}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-4">
                       <p className="font-headline font-bold text-sm">{job.budget} {job.currency}</p>
-                      <p className="font-label text-[9px] text-tertiary">Secured in V3 Vault</p>
+                      <p className="font-label text-[9px] text-tertiary">Secured in Automated Escrow</p>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <span className={cn(
@@ -201,7 +201,7 @@ export const Dashboard = () => {
                 )) : (
                   <tr>
                     <td colSpan={4} className="px-5 py-12 text-center text-on-surface-variant italic text-xs">
-                      No active deployments found. <Link to="/post-project" className="text-primary font-bold hover:underline">Post your first project</Link> to get started.
+                      No active projects found. <Link to="/post-project" className="text-primary font-bold hover:underline">Post your first project</Link> to get started.
                     </td>
                   </tr>
                 )}

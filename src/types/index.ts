@@ -3,7 +3,7 @@ export interface Project {
   title: string;
   client: string;
   budget: string;
-  currency: 'ETH' | 'USDC';
+  currency: 'USD' | 'EUR' | 'GBP';
   status: 'open' | 'in-progress' | 'reviewing' | 'completed' | 'draft';
   milestone?: string;
   progress?: number;

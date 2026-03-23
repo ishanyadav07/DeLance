@@ -22,10 +22,7 @@ import { cn } from '@/src/utils';
 import { collection, addDoc, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
-import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
-import { createJobOnChain } from '../services/contractService';
-import { ethers } from 'ethers';
 
 import { GlassCard } from '../components/ui/GlassCard';
 
@@ -41,7 +38,6 @@ interface Milestone {
 export const PostProject = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useFirebase();
-  const { account, isActive, connect } = useWeb3();
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,21 +45,20 @@ export const PostProject = () => {
   
   // Form State
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Smart Contracts');
+  const [category, setCategory] = useState('Backend');
   const [budget, setBudget] = useState('');
-  const [currency, setCurrency] = useState('ETH');
+  const [currency, setCurrency] = useState('USD');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
-  const [isOnChain, setIsOnChain] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: '1', title: 'Initial Draft & Architecture', amount: 30, description: 'Delivery of technical specifications and initial smart contract structure.' }
+    { id: '1', title: 'Initial Draft & Architecture', amount: 30, description: 'Delivery of technical specifications and initial backend structure.' }
   ]);
 
   const steps: { id: Step; label: string; icon: any }[] = [
     { id: 'basics', label: 'Basics', icon: Layers },
     { id: 'details', label: 'Details', icon: FileText },
-    { id: 'milestones', label: 'Escrow', icon: Target },
+    { id: 'milestones', label: 'Automated Escrow', icon: Target },
     { id: 'review', label: 'Review', icon: ShieldCheck },
   ];
 
@@ -119,35 +114,24 @@ export const PostProject = () => {
     setError(null);
 
     try {
-      let onChainJobId = null;
-      if (isOnChain) {
-        try {
-          const result = await createJobOnChain(title, budget);
-          onChainJobId = result.jobId; 
-        } catch (chainErr: any) {
-          console.error('On-chain deployment failed:', chainErr);
-          throw new Error(`Blockchain deployment failed: ${chainErr.message || 'Check your wallet connection.'}`);
-        }
-      }
-
       const batch = writeBatch(db);
       
       // 1. Create the job document
       const jobRef = doc(collection(db, 'jobs'));
+      const parsedBudget = parseFloat(budget);
       const jobData = {
         id: jobRef.id,
         clientId: user.uid,
         clientName: user.displayName || 'Anonymous Client',
+        clientPhotoURL: user.photoURL || '',
         title,
         description,
-        budget: parseFloat(budget),
+        budget: parsedBudget,
         currency,
         category,
         status: 'open',
         createdAt: serverTimestamp(),
         tags,
-        isOnChain,
-        onChainJobId,
         bidCount: 0
       };
       
@@ -157,11 +141,15 @@ export const PostProject = () => {
         // 2. Create milestones subcollection
         milestones.forEach((m) => {
           const milestoneRef = doc(collection(db, `jobs/${jobRef.id}/milestones`));
+          // Calculate actual amount from percentage
+          const actualAmount = (m.amount / 100) * parsedBudget;
+          
           batch.set(milestoneRef, {
             id: milestoneRef.id,
             jobId: jobRef.id,
             title: m.title,
-            amount: m.amount,
+            amount: actualAmount,
+            percentage: m.amount, // Keep percentage for reference
             description: m.description,
             status: 'pending'
           });
@@ -211,9 +199,9 @@ export const PostProject = () => {
           </div>
           
           <div className="space-y-3 md:space-y-4">
-            <h1 className="text-3xl md:text-4xl font-headline font-extrabold tracking-tight">Project Deployed</h1>
+            <h1 className="text-3xl md:text-4xl font-headline font-extrabold tracking-tight">Project Posted</h1>
             <p className="text-on-surface-variant text-base md:text-lg max-w-md mx-auto leading-relaxed">
-              Your project is now live on the protocol. <span className="text-primary font-bold">{budget} {currency}</span> has been locked in the escrow vault.
+              Your project is now live on the platform. <span className="text-primary font-bold">{budget} {currency}</span> has been locked in the automated escrow.
             </p>
           </div>
 
@@ -297,7 +285,7 @@ export const PostProject = () => {
                             onChange={(e) => setTitle(e.target.value)}
                             required
                             className="w-full bg-surface-container-highest border border-white/5 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary/30 text-lg font-medium placeholder:text-outline/50 transition-all" 
-                            placeholder="e.g. Smart Contract Audit for Yield Protocol" 
+                            placeholder="e.g. Backend Architecture for E-commerce" 
                             type="text" 
                           />
                         </div>
@@ -311,9 +299,9 @@ export const PostProject = () => {
                                 onChange={(e) => setCategory(e.target.value)}
                                 className="w-full bg-surface-container-highest border border-white/5 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary/30 appearance-none cursor-pointer font-medium text-sm"
                               >
-                                <option>Smart Contracts</option>
-                                <option>Frontend / dApp</option>
-                                <option>ZK-Proofs</option>
+                                <option>Backend</option>
+                                <option>Frontend</option>
+                                <option>Design</option>
                                 <option>Security Audit</option>
                                 <option>Architecture</option>
                               </select>
@@ -338,9 +326,9 @@ export const PostProject = () => {
                                 onChange={(e) => setCurrency(e.target.value)}
                                 className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
                               >
-                                <option>ETH</option>
-                                <option>USDC</option>
-                                <option>SOL</option>
+                                <option>USD</option>
+                                <option>EUR</option>
+                                <option>GBP</option>
                               </select>
                             </div>
                           </div>
@@ -411,7 +399,7 @@ export const PostProject = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <h3 className="font-headline text-lg font-bold">Escrow Milestones</h3>
+                          <h3 className="font-headline text-lg font-bold">Automated Escrow Milestones</h3>
                           <p className="text-[10px] text-outline uppercase tracking-wider">Divide your project into phases.</p>
                         </div>
                         <button 
@@ -478,7 +466,7 @@ export const PostProject = () => {
                       <div className="p-3 bg-tertiary/5 border border-tertiary/10 rounded-xl flex items-start gap-3">
                         <Info size={16} className="text-tertiary shrink-0 mt-0.5" />
                         <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-tertiary">Escrow Logic</p>
+                          <p className="text-xs font-bold text-tertiary">Automation Logic</p>
                           <p className="text-[10px] text-on-surface-variant leading-relaxed">
                             Total payout must equal 100%. Current total: <span className={cn("font-bold", milestones.reduce((acc, m) => acc + m.amount, 0) === 100 ? "text-tertiary" : "text-error")}>
                               {milestones.reduce((acc, m) => acc + m.amount, 0)}%
@@ -515,7 +503,7 @@ export const PostProject = () => {
                           </div>
 
                           <div className="space-y-3">
-                            <h4 className="font-label text-[10px] uppercase tracking-widest text-primary font-bold">Escrow Breakdown</h4>
+                            <h4 className="font-label text-[10px] uppercase tracking-widest text-primary font-bold">Automated Escrow Breakdown</h4>
                             <div className="space-y-2">
                               {milestones.map((m, i) => (
                                 <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
@@ -535,25 +523,10 @@ export const PostProject = () => {
                             <ShieldCheck size={20} />
                           </div>
                           <div className="flex-1 space-y-0.5">
-                            <p className="text-xs md:text-sm font-bold">Platform Escrow (Standard)</p>
+                            <p className="text-xs md:text-sm font-bold">Automated Escrow (Standard)</p>
                             <p className="text-[9px] md:text-[10px] text-on-surface-variant leading-relaxed">
                               Funds are managed by the platform and released upon your approval. No wallet required.
                             </p>
-                          </div>
-                          <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-                            <div className="text-right">
-                              <label className="text-[9px] font-bold uppercase tracking-widest text-outline block">On-Chain (Optional)</label>
-                              {!isActive && (
-                                <span className="text-[7px] text-error font-bold uppercase tracking-tighter">Connect Wallet</span>
-                              )}
-                            </div>
-                            <input 
-                              type="checkbox" 
-                              checked={isOnChain}
-                              disabled={!isActive}
-                              onChange={(e) => setIsOnChain(e.target.checked)}
-                              className="w-4 h-4 rounded border-white/10 bg-surface-container-highest text-primary focus:ring-primary/30 disabled:opacity-30 disabled:cursor-not-allowed"
-                            />
                           </div>
                         </div>
                       </div>
@@ -582,11 +555,11 @@ export const PostProject = () => {
                     {isSubmitting ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
-                        Deploying...
+                        Posting...
                       </>
                     ) : (
                       <>
-                        <Lock size={16} /> Deploy & Lock
+                        <Lock size={16} /> Post & Lock
                       </>
                     )}
                   </button>
@@ -611,15 +584,15 @@ export const PostProject = () => {
               <ShieldCheck size={20} />
             </div>
             <div className="space-y-3">
-              <h3 className="font-headline text-lg font-bold">Trustless Escrow</h3>
+              <h3 className="font-headline text-lg font-bold">Secure Automated Escrow</h3>
               <p className="text-xs text-on-surface-variant leading-relaxed">
-                DeLance uses an immutable smart contract vault to secure project funds. 
+                DeLance uses a secure Automated Escrow System to protect project funds. 
               </p>
               <ul className="space-y-2">
                 {[
                   'Funds locked upon posting',
                   'Milestone-based releases',
-                  'Dispute resolution protocol',
+                  'Dispute resolution process',
                   'Zero intermediary fees'
                 ].map(item => (
                   <li key={item} className="flex items-center gap-2.5 text-[10px] text-outline">
@@ -630,16 +603,6 @@ export const PostProject = () => {
               </ul>
             </div>
           </GlassCard>
-
-          <div className="p-6 bg-surface-container-highest/20 rounded-2xl border border-white/5 space-y-3">
-            <div className="flex items-center gap-2 text-primary">
-              <Coins size={16} />
-              <span className="font-bold text-xs">Gas Optimization</span>
-            </div>
-            <p className="text-[10px] text-on-surface-variant leading-relaxed">
-              Our protocol is optimized for low-cost deployments on L2 networks. Estimated gas: <span className="text-primary font-mono font-bold">~0.0004 ETH</span>
-            </p>
-          </div>
         </div>
       </div>
     </div>

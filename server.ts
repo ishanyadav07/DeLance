@@ -26,15 +26,15 @@ async function startServer() {
       displayName: "Demo User",
       role: "freelancer",
       reputation: 95,
-      bio: "Expert Solidity developer with 5 years of experience."
+      bio: "Expert Backend developer with 5 years of experience."
     });
   });
 
   app.get("/api/search/jobs", (req, res) => {
     const { q } = req.query;
     res.json([
-      { id: "1", title: "Smart Contract Audit", budget: 5000, status: "open" },
-      { id: "2", title: "DeFi Protocol Development", budget: 15000, status: "open" }
+      { id: "1", title: "Security Audit", budget: 5000, status: "open" },
+      { id: "2", title: "Platform Development", budget: 15000, status: "open" }
     ]);
   });
 

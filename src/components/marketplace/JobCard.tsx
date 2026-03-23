@@ -11,13 +11,13 @@ interface JobCardProps {
     id: string | number;
     title: string;
     client: string;
+    clientPhotoURL?: string;
     budget: string | number;
     currency: string;
     category: string;
     tags: string[];
     status: string;
     desc: string;
-    isOnChain?: boolean;
     bidCount?: number;
   };
   index: number;
@@ -43,17 +43,17 @@ export const JobCard: React.FC<JobCardProps> = React.memo(({ job, index }) => {
           <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
             <div className="flex items-start gap-2 w-full">
               <div className="w-8 h-8 sm:w-10 rounded-md sm:rounded-lg bg-surface-container border border-white/10 overflow-hidden group-hover:border-primary/30 transition-colors duration-500 shadow-inner shrink-0 mt-0.5">
-                <img src={`https://picsum.photos/seed/${job.client}/100/100`} alt="" loading="lazy" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500" referrerPolicy="no-referrer" />
+                <img 
+                  src={job.clientPhotoURL || `https://picsum.photos/seed/${job.client}/100/100`} 
+                  alt="" 
+                  loading="lazy" 
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500" 
+                  referrerPolicy="no-referrer" 
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-1 mb-1">
                   <p className="text-[8px] sm:text-[9px] text-primary font-mono font-bold uppercase tracking-widest truncate max-w-[80px] sm:max-w-[100px]">{job.client}</p>
-                  {job.isOnChain && (
-                    <div className="px-1 py-0.5 rounded-full flex items-center gap-0.5 bg-primary/10 text-primary border border-primary/20 backdrop-blur-md shrink-0">
-                      <ShieldCheck size={7} className="fill-current" />
-                      <span className="text-[6px] sm:text-[7px] font-mono font-bold uppercase tracking-wider">On-Chain</span>
-                    </div>
-                  )}
                   <div className={cn(
                     "px-1 py-0.5 rounded-full flex items-center gap-0.5 border backdrop-blur-md shrink-0",
                     job.status === 'Negotiable' ? "bg-secondary/10 text-secondary border-secondary/20" : "bg-tertiary/10 text-tertiary border-tertiary/20"

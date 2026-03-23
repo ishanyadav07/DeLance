@@ -15,8 +15,7 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the profile was created." },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the profile was last updated." },
         "completedProjects": { "type": "number", "description": "Number of projects completed by the user." },
-        "skills": { "type": "array", "items": { "type": "string" }, "description": "List of user's skills." },
-        "walletAddress": { "type": "string", "description": "User's linked crypto wallet address." }
+        "skills": { "type": "array", "items": { "type": "string" }, "description": "List of user's skills." }
       },
       "required": ["uid", "email", "role"]
     },
@@ -32,7 +31,7 @@
         "title": { "type": "string", "description": "Title of the job." },
         "description": { "type": "string", "description": "Detailed description of the job." },
         "budget": { "type": "number", "description": "Total budget for the job." },
-        "currency": { "type": "string", "description": "Currency for the budget (e.g., ETH, USDC)." },
+        "currency": { "type": "string", "description": "Currency for the budget (e.g., USD, EUR, GBP)." },
         "category": { "type": "string", "description": "Project category." },
         "status": { "type": "string", "enum": ["open", "active", "completed", "disputed"], "description": "Current status of the job." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the job was posted." },

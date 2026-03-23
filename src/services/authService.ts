@@ -88,7 +88,6 @@ export const signInWithGoogle = async (): Promise<User | null> => {
           completedProjects: 0,
           bio: '',
           skills: [],
-          walletAddress: '', // To be linked later
         });
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);

@@ -15,12 +15,12 @@ export const Marketplace = () => {
   const [firestoreJobs, setFirestoreJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const categories = ['All', 'Smart Contracts', 'Frontend', 'ZK-Proofs', 'Security Audit', 'Architecture'];
+  const categories = ['All', 'Backend', 'Frontend', 'Design', 'Security Audit', 'Development'];
 
   const staticJobs = [
-    { id: 's1', title: 'Smart Contract Audit', client: 'Aether Protocol', budget: '4.50', currency: 'ETH', category: 'Security Audit', tags: ['Solidity', 'Security', 'EVM'], status: 'Locked Escrow', desc: 'Comprehensive security audit for a new yield optimization protocol on Base.' },
-    { id: 's2', title: 'dApp Frontend Architect', client: 'Nexus DAO', budget: '12,500', currency: 'USDC', category: 'Frontend', tags: ['React', 'Tailwind', 'Wagmi'], status: 'Locked Escrow', desc: 'Build a minimal, high-performance dashboard for a ZK-based identity protocol.' },
-    { id: 's3', title: 'ZK-Rollup Researcher', client: 'Stark Labs', budget: '8.00', currency: 'ETH', category: 'ZK-Proofs', tags: ['Cryptography', 'Rust', 'L2'], status: 'Negotiable', desc: 'Research and optimize ZK-Rollup proof generation times.' },
+    { id: 's1', title: 'Security Audit for E-commerce', client: 'Aether Retail', budget: '4,500', currency: 'USD', category: 'Security Audit', tags: ['Node.js', 'Security', 'React'], status: 'Automated Escrow', desc: 'Comprehensive security audit for a new e-commerce platform.' },
+    { id: 's2', title: 'SaaS Frontend Developer', client: 'Nexus Corp', budget: '12,500', currency: 'USD', category: 'Frontend', tags: ['React', 'Tailwind', 'TypeScript'], status: 'Automated Escrow', desc: 'Build a minimal, high-performance dashboard for a new SaaS product.' },
+    { id: 's3', title: 'Database Optimization Expert', client: 'Stark Labs', budget: '8,000', currency: 'USD', category: 'Backend', tags: ['PostgreSQL', 'Performance', 'Backend'], status: 'Negotiable', desc: 'Research and optimize complex database queries for a large-scale enterprise application.' },
   ];
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export const Marketplace = () => {
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
       <header className="mb-6 md:mb-10">
-        <h1 className="text-2xl md:text-3xl font-headline font-extrabold tracking-tight mb-6">Protocol Marketplace</h1>
+        <h1 className="text-2xl md:text-3xl font-headline font-extrabold tracking-tight mb-6">Project Marketplace</h1>
         <div className="relative group max-w-xl">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-outline">
             <Search size={18} />
@@ -103,7 +103,7 @@ export const Marketplace = () => {
         {loading ? (
           <div className="col-span-full flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-on-surface-variant font-medium">Loading protocol jobs...</p>
+            <p className="text-on-surface-variant font-medium">Loading projects...</p>
           </div>
         ) : (
           <AnimatePresence mode="popLayout">

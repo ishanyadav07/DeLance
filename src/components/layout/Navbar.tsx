@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Wallet, Menu, ChevronDown, User, Settings, LogOut, CheckCircle2, Clock, Shield } from 'lucide-react';
+import { Bell, Menu, ChevronDown, User, Settings, LogOut, CheckCircle2, Clock, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../ui/GlassCard';
 import { GradientText } from '../ui/GradientText';
 import { useFirebase } from '../FirebaseProvider';
-import { useWeb3 } from '../Web3Provider';
 import { signInWithGoogle, signOut } from '../../services/authService';
 
 export const Navbar = () => {
@@ -16,7 +15,6 @@ export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { user, loading, isAdmin } = useFirebase();
-  const { account, connect, isConnecting, isActive } = useWeb3();
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const showSidebar = location.pathname !== '/';
@@ -27,23 +25,19 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleConnect = async () => {
+  const handleLogin = async () => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
     try {
       await signInWithGoogle();
     } catch (error: any) {
-      if (error.code === 'auth/popup-blocked') {
-        alert('Please allow popups for this site to sign in with Google.');
-      } else if (error.code !== 'auth/cancelled-popup-request') {
-        console.error('Login failed:', error);
-      }
+      console.error('Login failed:', error);
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const handleDisconnect = async () => {
+  const handleLogout = async () => {
     try {
       await signOut();
       setShowProfileMenu(false);
@@ -53,9 +47,9 @@ export const Navbar = () => {
   };
 
   const notifications = [
-    { id: 1, title: 'Milestone Approved', desc: 'Sovereign Labs approved Milestone 1.', time: '2h ago', icon: CheckCircle2, color: 'text-tertiary' },
-    { id: 2, title: 'New Proposal', desc: 'You received a new proposal for ZK-Audit.', time: '5h ago', icon: Clock, color: 'text-primary' },
-    { id: 3, title: 'Escrow Released', desc: '2.5 ETH released to your wallet.', time: '1d ago', icon: Shield, color: 'text-secondary' },
+    { id: 1, title: 'Milestone Approved', desc: 'Acme Corp approved Milestone 1.', time: '2h ago', icon: CheckCircle2, color: 'text-tertiary' },
+    { id: 2, title: 'New Proposal', desc: 'You received a new proposal for Security Audit.', time: '5h ago', icon: Clock, color: 'text-primary' },
+    { id: 3, title: 'Escrow Released', desc: '$2,500 released to your account.', time: '1d ago', icon: Shield, color: 'text-secondary' },
   ];
 
   return (
@@ -110,27 +104,8 @@ export const Navbar = () => {
           </div>
         </div>
 
-          <div className="flex items-center gap-4">
-            {/* MetaMask Connection */}
-            {!isActive ? (
-              <button 
-                onClick={connect}
-                disabled={isConnecting}
-                className="hidden md:flex items-center gap-2 bg-tertiary/10 text-tertiary border border-tertiary/20 px-4 py-2 rounded-xl font-label font-bold text-[10px] uppercase tracking-wider active:scale-95 transition-all disabled:opacity-50"
-              >
-                <Wallet size={14} />
-                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-              </button>
-            ) : (
-              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-tertiary/10 border border-tertiary/20 rounded-xl">
-                <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
-                <span className="text-[10px] font-mono font-bold text-tertiary">
-                  {account?.slice(0, 6)}...{account?.slice(-4)}
-                </span>
-              </div>
-            )}
-
-            {user ? (
+        <div className="flex items-center gap-4">
+          {user ? (
             <>
               {/* Notification Center */}
               <div className="relative">
@@ -198,7 +173,7 @@ export const Navbar = () => {
                 >
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-tertiary p-0.5">
                     <div className="w-full h-full rounded-[10px] bg-surface flex items-center justify-center overflow-hidden">
-                      <img src={user.photoURL || "https://picsum.photos/seed/architect/100/100"} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={user?.photoURL || "https://picsum.photos/seed/architect/100/100"} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                   </div>
                   <ChevronDown size={14} className={cn("text-on-surface-variant transition-transform", showProfileMenu && "rotate-180")} />
@@ -215,12 +190,12 @@ export const Navbar = () => {
                       <GlassCard className="p-0 sm:p-0 border border-white/5">
             <div className="p-4 border-b border-white/5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold">{user.displayName}</p>
+                <p className="text-xs font-bold">{user?.displayName || 'User'}</p>
                 {isAdmin && (
                   <span className="px-1.5 py-0.5 rounded-md bg-error/10 text-error text-[8px] font-bold uppercase tracking-widest border border-error/20">Admin</span>
                 )}
               </div>
-              <p className="text-[10px] font-mono text-primary truncate">{user.email}</p>
+              <p className="text-[10px] text-on-surface-variant truncate">{user?.email}</p>
             </div>
                         <div className="p-2">
                           <Link 
@@ -252,7 +227,7 @@ export const Navbar = () => {
                         </div>
                         <div className="p-2 border-t border-white/5 bg-surface-container-high/30">
                           <button 
-                            onClick={handleDisconnect}
+                            onClick={handleLogout}
                             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-error/10 text-error text-sm transition-colors"
                           >
                             <LogOut size={16} />
@@ -264,20 +239,15 @@ export const Navbar = () => {
                   )}
                 </AnimatePresence>
               </div>
-
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
-                <Wallet size={16} className="text-primary" />
-                <span className="text-xs font-mono font-bold text-primary">12.45 ETH</span>
-              </div>
             </>
           ) : (
             <button 
-              onClick={handleConnect}
-              disabled={loading || isLoggingIn}
+              onClick={handleLogin}
+              disabled={isLoggingIn}
               className="hidden md:flex items-center gap-2 bg-primary text-surface px-5 py-2 rounded-xl font-label font-bold text-xs uppercase tracking-wider active:scale-95 transition-all disabled:opacity-50"
             >
-              <Wallet size={16} />
-              {loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Sign In with Google'}
+              <User size={16} />
+              {isLoggingIn ? 'Signing In...' : 'Sign In'}
             </button>
           )}
 
@@ -300,31 +270,6 @@ export const Navbar = () => {
             className="md:hidden border-t border-white/5 overflow-hidden"
           >
             <div className="p-6 space-y-4">
-              {/* MetaMask Connection Mobile */}
-              {!isActive ? (
-                <button 
-                  onClick={() => {
-                    connect();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  disabled={isConnecting}
-                  className="w-full flex items-center justify-center gap-2 bg-tertiary/10 text-tertiary border border-tertiary/20 py-4 rounded-xl font-bold disabled:opacity-50"
-                >
-                  <Wallet size={20} />
-                  {isConnecting ? 'Connecting Wallet...' : 'Connect MetaMask'}
-                </button>
-              ) : (
-                <div className="flex items-center justify-between px-4 py-3 bg-tertiary/10 border border-tertiary/20 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
-                    <span className="text-sm font-bold">Wallet Connected</span>
-                  </div>
-                  <span className="text-sm font-mono font-bold text-tertiary">
-                    {account?.slice(0, 6)}...{account?.slice(-4)}
-                  </span>
-                </div>
-              )}
-
               <Link 
                 to="/marketplace" 
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -367,27 +312,20 @@ export const Navbar = () => {
               {!user ? (
                 <button 
                   onClick={() => {
-                    handleConnect();
+                    handleLogin();
                     setIsMobileMenuOpen(false);
                   }}
-                  disabled={loading || isLoggingIn}
+                  disabled={isLoggingIn}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-surface py-4 rounded-xl font-bold disabled:opacity-50"
                 >
-                  <Wallet size={20} />
-                  {loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Sign In with Google'}
+                  <User size={20} />
+                  {isLoggingIn ? 'Signing In...' : 'Sign In'}
                 </button>
               ) : (
                 <div className="pt-4 border-t border-white/5 space-y-4">
-                  <div className="flex items-center justify-between px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Wallet size={16} className="text-primary" />
-                      <span className="text-sm font-bold">Balance</span>
-                    </div>
-                    <span className="text-sm font-mono font-bold text-primary">12.45 ETH</span>
-                  </div>
                   <button 
                     onClick={() => {
-                      handleDisconnect();
+                      handleLogout();
                       setIsMobileMenuOpen(false);
                     }}
                     className="w-full flex items-center justify-center gap-2 bg-error/10 text-error py-4 rounded-xl font-bold hover:bg-error/20 transition-colors"
