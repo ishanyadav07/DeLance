@@ -22,6 +22,7 @@ import { cn } from '@/src/utils';
 import { collection, addDoc, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
+import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 import { createJobOnChain } from '../services/contractService';
 import { ethers } from 'ethers';
@@ -40,6 +41,7 @@ interface Milestone {
 export const PostProject = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useFirebase();
+  const { account, isActive, connect } = useWeb3();
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -541,14 +543,14 @@ export const PostProject = () => {
                           <div className="flex items-center gap-2 border-l border-white/10 pl-4">
                             <div className="text-right">
                               <label className="text-[9px] font-bold uppercase tracking-widest text-outline block">On-Chain (Optional)</label>
-                              {!window.ethereum && (
-                                <span className="text-[7px] text-error font-bold uppercase tracking-tighter">MetaMask Needed</span>
+                              {!isActive && (
+                                <span className="text-[7px] text-error font-bold uppercase tracking-tighter">Connect Wallet</span>
                               )}
                             </div>
                             <input 
                               type="checkbox" 
                               checked={isOnChain}
-                              disabled={!window.ethereum}
+                              disabled={!isActive}
                               onChange={(e) => setIsOnChain(e.target.checked)}
                               className="w-4 h-4 rounded border-white/10 bg-surface-container-highest text-primary focus:ring-primary/30 disabled:opacity-30 disabled:cursor-not-allowed"
                             />

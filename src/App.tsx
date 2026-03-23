@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
 import { FirebaseProvider } from './components/FirebaseProvider';
+import { Web3Provider } from './components/Web3Provider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -24,8 +25,9 @@ const PageLoader = () => (
 export default function App() {
   return (
     <ErrorBoundary>
-      <FirebaseProvider>
-        <Router>
+      <Web3Provider>
+        <FirebaseProvider>
+          <Router>
           <MainLayout>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -47,6 +49,7 @@ export default function App() {
           </MainLayout>
         </Router>
       </FirebaseProvider>
-    </ErrorBoundary>
+    </Web3Provider>
+  </ErrorBoundary>
   );
 }

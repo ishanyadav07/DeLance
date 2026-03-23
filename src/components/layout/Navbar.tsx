@@ -6,6 +6,7 @@ import { cn } from '@/src/utils';
 import { GlassCard } from '../ui/GlassCard';
 import { GradientText } from '../ui/GradientText';
 import { useFirebase } from '../FirebaseProvider';
+import { useWeb3 } from '../Web3Provider';
 import { signInWithGoogle, signOut } from '../../services/authService';
 
 export const Navbar = () => {
@@ -15,6 +16,7 @@ export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { user, loading, isAdmin } = useFirebase();
+  const { account, connect, isConnecting, isActive } = useWeb3();
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const showSidebar = location.pathname !== '/';
@@ -108,8 +110,27 @@ export const Navbar = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {user ? (
+          <div className="flex items-center gap-4">
+            {/* MetaMask Connection */}
+            {!isActive ? (
+              <button 
+                onClick={connect}
+                disabled={isConnecting}
+                className="hidden md:flex items-center gap-2 bg-tertiary/10 text-tertiary border border-tertiary/20 px-4 py-2 rounded-xl font-label font-bold text-[10px] uppercase tracking-wider active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Wallet size={14} />
+                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              </button>
+            ) : (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-tertiary/10 border border-tertiary/20 rounded-xl">
+                <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+                <span className="text-[10px] font-mono font-bold text-tertiary">
+                  {account?.slice(0, 6)}...{account?.slice(-4)}
+                </span>
+              </div>
+            )}
+
+            {user ? (
             <>
               {/* Notification Center */}
               <div className="relative">
@@ -279,6 +300,31 @@ export const Navbar = () => {
             className="md:hidden border-t border-white/5 overflow-hidden"
           >
             <div className="p-6 space-y-4">
+              {/* MetaMask Connection Mobile */}
+              {!isActive ? (
+                <button 
+                  onClick={() => {
+                    connect();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  disabled={isConnecting}
+                  className="w-full flex items-center justify-center gap-2 bg-tertiary/10 text-tertiary border border-tertiary/20 py-4 rounded-xl font-bold disabled:opacity-50"
+                >
+                  <Wallet size={20} />
+                  {isConnecting ? 'Connecting Wallet...' : 'Connect MetaMask'}
+                </button>
+              ) : (
+                <div className="flex items-center justify-between px-4 py-3 bg-tertiary/10 border border-tertiary/20 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+                    <span className="text-sm font-bold">Wallet Connected</span>
+                  </div>
+                  <span className="text-sm font-mono font-bold text-tertiary">
+                    {account?.slice(0, 6)}...{account?.slice(-4)}
+                  </span>
+                </div>
+              )}
+
               <Link 
                 to="/marketplace" 
                 onClick={() => setIsMobileMenuOpen(false)}
