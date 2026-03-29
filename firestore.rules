@@ -58,6 +58,63 @@ service cloud.firestore {
     //   - status: string (required, enum: ['pending', 'funded', 'delivered', 'approved', 'disputed'])
     //   - description: string (optional)
     //
+    // Collection: jobs/{jobId}/messages
+    // Document ID: messageId
+    // Fields:
+    //   - id: string (required)
+    //   - jobId: string (required)
+    //   - senderId: string (required, UID)
+    //   - text: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: reviews
+    // Document ID: reviewId
+    // Fields:
+    //   - id: string (required)
+    //   - jobId: string (required)
+    //   - reviewerId: string (required, UID)
+    //   - revieweeId: string (required, UID)
+    //   - rating: number (required, 1-5)
+    //   - comment: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/notifications
+    // Document ID: notificationId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, UID)
+    //   - title: string (required)
+    //   - message: string (required)
+    //   - type: string (required)
+    //   - link: string (optional)
+    //   - read: boolean (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: transactions
+    // Document ID: transactionId
+    // Fields:
+    //   - id: string (required)
+    //   - jobId: string (required)
+    //   - milestoneId: string (optional)
+    //   - fromId: string (required, UID)
+    //   - toId: string (required, UID)
+    //   - amount: number (required)
+    //   - status: string (required)
+    //   - type: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/portfolio
+    // Document ID: itemId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, UID)
+    //   - title: string (required)
+    //   - description: string (required)
+    //   - imageUrl: string (optional, url format)
+    //   - link: string (optional, url format)
+    //   - tags: list (optional)
+    //   - createdAt: timestamp (optional)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -166,6 +223,66 @@ service cloud.firestore {
              (!('percentage' in data) || data.percentage is number);
     }
 
+    function isValidPortfolioItem(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'userName', 'userPhoto', 'title', 'description', 'imageUrl', 'link', 'tags', 'createdAt', 'updatedAt']) &&
+             (!('id' in data) || data.id is string) &&
+             (!('userId' in data) || data.userId is string) &&
+             (!('userName' in data) || data.userName is string) &&
+             (!('userPhoto' in data) || isValidUrl(data.userPhoto) || data.userPhoto == "") &&
+             (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() < 200)) &&
+             (!('description' in data) || (data.description is string && data.description.size() > 0 && data.description.size() < 5000)) &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl) || data.imageUrl == "") &&
+             (!('link' in data) || isValidUrl(data.link) || data.link == "") &&
+             (!('tags' in data) || data.tags is list) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidReview(data) {
+      return hasOnlyAllowedFields(['id', 'jobId', 'reviewerId', 'revieweeId', 'rating', 'comment', 'createdAt']) &&
+             (!('id' in data) || data.id is string) &&
+             (!('jobId' in data) || data.jobId is string) &&
+             (!('reviewerId' in data) || data.reviewerId is string) &&
+             (!('revieweeId' in data) || data.revieweeId is string) &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 1 && data.rating <= 5)) &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() > 0 && data.comment.size() < 5000)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['id', 'jobId', 'senderId', 'text', 'createdAt']) &&
+             (!('id' in data) || data.id is string) &&
+             (!('jobId' in data) || data.jobId is string) &&
+             (!('senderId' in data) || data.senderId is string) &&
+             (!('text' in data) || (data.text is string && data.text.size() > 0 && data.text.size() < 5000)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidNotification(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'title', 'message', 'type', 'link', 'read', 'createdAt']) &&
+             (!('id' in data) || data.id is string) &&
+             (!('userId' in data) || data.userId is string) &&
+             (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() < 200)) &&
+             (!('message' in data) || (data.message is string && data.message.size() > 0 && data.message.size() < 1000)) &&
+             (!('type' in data) || data.type is string) &&
+             (!('link' in data) || data.link is string) &&
+             (!('read' in data) || data.read is bool) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidTransaction(data) {
+      return hasOnlyAllowedFields(['id', 'jobId', 'milestoneId', 'fromId', 'toId', 'amount', 'status', 'type', 'createdAt']) &&
+             (!('id' in data) || data.id is string) &&
+             (!('jobId' in data) || data.jobId is string) &&
+             (!('milestoneId' in data) || data.milestoneId is string) &&
+             (!('fromId' in data) || data.fromId is string) &&
+             (!('toId' in data) || data.toId is string) &&
+             (!('amount' in data) || (data.amount is number && data.amount >= 0)) &&
+             (!('status' in data) || data.status is string) &&
+             (!('type' in data) || data.type is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -179,6 +296,20 @@ service cloud.firestore {
       allow create: if isOwner(userId) && hasRequiredFields(['uid', 'email', 'role']) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin()) && areImmutableFieldsUnchanged(['uid', 'createdAt']);
       allow delete: if isAdmin();
+
+      match /portfolio/{itemId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && hasRequiredFields(['id', 'userId', 'title', 'description']) && isValidPortfolioItem(request.resource.data) && request.resource.data.userId == request.auth.uid;
+        allow update: if (isOwner(userId) || isAdmin()) && isValidPortfolioItem(request.resource.data) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow create: if isAdmin(); // System-generated
+        allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /jobs/{jobId} {
@@ -186,6 +317,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() && hasRequiredFields(['id', 'clientId', 'title', 'description', 'budget', 'category', 'status', 'createdAt']) && isValidJob(request.resource.data) && request.resource.data.clientId == request.auth.uid;
       allow update: if isAuthenticated() && 
                     (
+                      isAdmin() ||
                       (
                         resource.data.status == 'open' && 
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bidCount'])
@@ -195,8 +327,7 @@ service cloud.firestore {
                         (
                           resource.data.clientId == request.auth.uid || 
                           resource.data.freelancerId == request.auth.uid ||
-                          (resource.data.status == 'open' && request.resource.data.status == 'in-progress' && request.resource.data.freelancerId == request.auth.uid) ||
-                          isAdmin()
+                          (resource.data.status == 'open' && request.resource.data.status == 'in-progress' && request.resource.data.freelancerId == request.auth.uid)
                         )
                       )
                     );
@@ -215,6 +346,37 @@ service cloud.firestore {
         allow update: if isAuthenticated() && isValidMilestone(request.resource.data) && (get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || get(/databases/$(database)/documents/jobs/$(jobId)).data.freelancerId == request.auth.uid || isAdmin());
         allow delete: if isAdmin() || (isAuthenticated() && get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid && resource.data.status == 'pending');
       }
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && 
+                    (
+                      get(/databases/$(database)/documents/jobs/$(jobId)).data.clientId == request.auth.uid || 
+                      get(/databases/$(database)/documents/jobs/$(jobId)).data.freelancerId == request.auth.uid ||
+                      isAdmin()
+                    );
+        allow create: if isAuthenticated() && hasRequiredFields(['jobId', 'senderId', 'text', 'createdAt']) && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && hasRequiredFields(['jobId', 'reviewerId', 'revieweeId', 'rating', 'comment', 'createdAt']) && isValidReview(request.resource.data) && request.resource.data.reviewerId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Portfolio Items - Allow public reading via collection group query
+    match /{path=**}/portfolio/{itemId} {
+      allow read: if true;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }

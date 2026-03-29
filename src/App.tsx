@@ -38,6 +38,7 @@ export default function App() {
                 <Route path="/submit-work" element={<SubmitWork />} />
                 <Route path="/escrow/:id" element={<EscrowDetails />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/:id" element={<Profile />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/showcase" element={<Showcase />} />
                 {/* Fallback routes for demo */}

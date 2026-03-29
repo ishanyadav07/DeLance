@@ -41,12 +41,6 @@ export const ProjectDetails = () => {
   useEffect(() => {
     if (!id) return;
 
-    const staticJobs = [
-      { id: 's1', title: 'Security Audit for E-commerce', client: 'Aether Retail', budget: '4,500', currency: 'USD', category: 'Security Audit', tags: ['Node.js', 'Security', 'React'], status: 'Automated Escrow', desc: 'Comprehensive security audit for a new e-commerce platform.' },
-      { id: 's2', title: 'SaaS Frontend Developer', client: 'Nexus Corp', budget: '12,500', currency: 'USD', category: 'Frontend', tags: ['React', 'Tailwind', 'TypeScript'], status: 'Automated Escrow', desc: 'Build a minimal, high-performance dashboard for a new SaaS product.' },
-      { id: 's3', title: 'Database Optimization Expert', client: 'Stark Labs', budget: '8,000', currency: 'USD', category: 'Backend', tags: ['PostgreSQL', 'Performance', 'Backend'], status: 'Negotiable', desc: 'Research and optimize complex database queries for a large-scale enterprise application.' },
-    ];
-
     const fetchProject = async () => {
       try {
         const docRef = doc(db, 'jobs', id);
@@ -63,18 +57,7 @@ export const ProjectDetails = () => {
             setClient(clientSnap.data());
           }
         } else {
-          // Check static jobs fallback
-          const staticJob = staticJobs.find(j => j.id === id) || (id === '1' ? staticJobs[0] : null);
-          if (staticJob) {
-            setProject(staticJob);
-            setMilestones([
-              { title: 'Initial Design & Spec', description: 'Detailed spec and flowcharts', amount: 30, status: 'pending' },
-              { title: 'Core Implementation', description: 'Main logic and unit tests', amount: 50, status: 'pending' },
-              { title: 'Final Review & Handover', description: 'Documentation and deployment', amount: 20, status: 'pending' }
-            ]);
-          } else {
-            console.error("No such project!");
-          }
+          console.error("No such project!");
         }
       } catch (error) {
         console.error("Error fetching project:", error);
@@ -120,12 +103,6 @@ export const ProjectDetails = () => {
   const handleApply = async () => {
     if (!user || !id || !proposal.trim()) return;
     
-    // Prevent bidding on static jobs (which don't exist in Firestore)
-    if (id.startsWith('s') || id === '1') {
-      setError("Cannot bid on demo projects. Please bid on a real project posted by a user.");
-      return;
-    }
-
     const bidAmount = parseFloat(amount);
     if (isNaN(bidAmount) || bidAmount <= 0) {
       setError('Please enter a valid bid amount.');
@@ -532,74 +509,76 @@ export const ProjectDetails = () => {
             </div>
           </section>
 
-          <GlassCard className="p-6 sm:p-8 rounded-2xl space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold font-headline">Apply for this Project</h2>
-              <div className="flex gap-1 text-primary">
-                {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill={i <= (client?.reputation || 0) ? "currentColor" : "none"} className={i <= (client?.reputation || 0) ? "" : "text-on-surface-variant"} />)}
-              </div>
-            </div>
-            
-            {bidSuccess ? (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-tertiary/10 border border-tertiary/20 p-6 rounded-xl text-center space-y-3"
-              >
-                <div className="w-12 h-12 bg-tertiary/20 rounded-full flex items-center justify-center mx-auto text-tertiary">
-                  <CheckCircle2 size={24} />
+          {project.status === 'open' && (
+            <GlassCard className="p-6 sm:p-8 rounded-2xl space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold font-headline">Apply for this Project</h2>
+                <div className="flex gap-1 text-primary">
+                  {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill={i <= (client?.reputation || 0) ? "currentColor" : "none"} className={i <= (client?.reputation || 0) ? "" : "text-on-surface-variant"} />)}
                 </div>
-                <h3 className="font-bold">Application Submitted!</h3>
-                <p className="text-sm text-on-surface-variant">Your proposal has been sent to the client. You'll be notified if they accept your bid.</p>
-                <button 
-                  onClick={() => setBidSuccess(false)}
-                  className="text-primary text-xs font-bold uppercase tracking-widest hover:underline"
+              </div>
+              
+              {bidSuccess ? (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-tertiary/10 border border-tertiary/20 p-6 rounded-xl text-center space-y-3"
                 >
-                  Submit another proposal
-                </button>
-              </motion.div>
-            ) : (
-              <div className="space-y-4">
-                {error && (
-                  <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-xs font-bold mb-4">
-                    {error}
+                  <div className="w-12 h-12 bg-tertiary/20 rounded-full flex items-center justify-center mx-auto text-tertiary">
+                    <CheckCircle2 size={24} />
                   </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Bid Amount ({project.currency})</label>
-                    <input 
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="w-full bg-surface-container-highest border-none rounded-xl px-4 py-3 focus:ring-1 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/50"
-                      placeholder="Enter your bid..."
-                    />
-                  </div>
-                </div>
-                <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Your Proposal & Approach</label>
-                <textarea 
-                  value={proposal}
-                  onChange={(e) => setProposal(e.target.value)}
-                  className="w-full bg-surface-container-highest border-none rounded-xl p-6 focus:ring-1 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/50 min-h-[160px]" 
-                  placeholder="Describe your technical architecture approach and relevant experience..."
-                />
-                <div className="flex items-center gap-4">
+                  <h3 className="font-bold">Application Submitted!</h3>
+                  <p className="text-sm text-on-surface-variant">Your proposal has been sent to the client. You'll be notified if they accept your bid.</p>
                   <button 
-                    onClick={handleApply}
-                    disabled={isSubmitting || !user || !proposal.trim()}
-                    className="flex-1 bg-linear-to-r from-primary to-primary-container text-surface font-label font-bold uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-primary/10 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    onClick={() => setBidSuccess(false)}
+                    className="text-primary text-xs font-bold uppercase tracking-widest hover:underline"
                   >
-                    {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Submit Application'}
+                    Submit another proposal
                   </button>
-                  <button className="p-4 bg-surface-container-highest rounded-xl text-on-surface-variant hover:text-white transition-colors">
-                    <Bookmark size={20} />
-                  </button>
+                </motion.div>
+              ) : (
+                <div className="space-y-4">
+                  {error && (
+                    <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-xs font-bold mb-4">
+                      {error}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Bid Amount ({project.currency})</label>
+                      <input 
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full bg-surface-container-highest border-none rounded-xl px-4 py-3 focus:ring-1 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/50"
+                        placeholder="Enter your bid..."
+                      />
+                    </div>
+                  </div>
+                  <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Your Proposal & Approach</label>
+                  <textarea 
+                    value={proposal}
+                    onChange={(e) => setProposal(e.target.value)}
+                    className="w-full bg-surface-container-highest border-none rounded-xl p-6 focus:ring-1 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/50 min-h-[160px]" 
+                    placeholder="Describe your technical architecture approach and relevant experience..."
+                  />
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={handleApply}
+                      disabled={isSubmitting || !user || !proposal.trim()}
+                      className="flex-1 bg-linear-to-r from-primary to-primary-container text-surface font-label font-bold uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-primary/10 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Submit Application'}
+                    </button>
+                    <button className="p-4 bg-surface-container-highest rounded-xl text-on-surface-variant hover:text-white transition-colors">
+                      <Bookmark size={20} />
+                    </button>
+                  </div>
+                  {!user && <p className="text-[10px] text-error text-center font-bold uppercase tracking-wider">Please sign in to apply</p>}
                 </div>
-                {!user && <p className="text-[10px] text-error text-center font-bold uppercase tracking-wider">Please sign in to apply</p>}
-              </div>
-            )}
-          </GlassCard>
+              )}
+            </GlassCard>
+          )}
         </div>
 
         <div className="space-y-8">

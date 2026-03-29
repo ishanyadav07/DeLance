@@ -17,22 +17,19 @@ export const Marketplace = () => {
 
   const categories = ['All', 'Backend', 'Frontend', 'Design', 'Security Audit', 'Development'];
 
-  const staticJobs = [
-    { id: 's1', title: 'Security Audit for E-commerce', client: 'Aether Retail', budget: '4,500', currency: 'USD', category: 'Security Audit', tags: ['Node.js', 'Security', 'React'], status: 'Automated Escrow', desc: 'Comprehensive security audit for a new e-commerce platform.' },
-    { id: 's2', title: 'SaaS Frontend Developer', client: 'Nexus Corp', budget: '12,500', currency: 'USD', category: 'Frontend', tags: ['React', 'Tailwind', 'TypeScript'], status: 'Automated Escrow', desc: 'Build a minimal, high-performance dashboard for a new SaaS product.' },
-    { id: 's3', title: 'Database Optimization Expert', client: 'Stark Labs', budget: '8,000', currency: 'USD', category: 'Backend', tags: ['PostgreSQL', 'Performance', 'Backend'], status: 'Negotiable', desc: 'Research and optimize complex database queries for a large-scale enterprise application.' },
-  ];
-
   useEffect(() => {
     const q = query(collection(db, 'jobs'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const jobsData = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-        // Map Firestore fields to JobCard expected fields if necessary
-        client: doc.data().clientName || 'Anonymous',
-        desc: doc.data().description,
-      }));
+      const jobsData = snapshot.docs
+        .map(doc => ({
+          ...doc.data(),
+          id: doc.id,
+          status: doc.data().status,
+          // Map Firestore fields to JobCard expected fields if necessary
+          client: doc.data().clientName || 'Anonymous',
+          desc: doc.data().description,
+        }))
+        .filter(job => job.status !== 'completed');
       setFirestoreJobs(jobsData);
       setLoading(false);
     }, (error) => {
@@ -43,17 +40,15 @@ export const Marketplace = () => {
     return () => unsubscribe();
   }, []);
 
-  const allJobs = [...firestoreJobs, ...staticJobs];
-
   const filteredJobs = React.useMemo(() => {
-    return allJobs.filter(job => {
+    return firestoreJobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            job.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            job.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesCategory = activeCategory === 'All' || job.category === activeCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [allJobs, searchQuery, activeCategory]);
+  }, [firestoreJobs, searchQuery, activeCategory]);
 
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">

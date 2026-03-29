@@ -67,12 +67,97 @@
         "description": { "type": "string", "description": "Description of the milestone deliverables." }
       },
       "required": ["jobId", "title", "amount", "status"]
+    },
+    "PortfolioItem": {
+      "title": "Portfolio Item",
+      "description": "A project or work sample showcased by a freelancer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the portfolio item." },
+        "userId": { "type": "string", "description": "UID of the freelancer." },
+        "userName": { "type": "string", "description": "Display name of the freelancer." },
+        "userPhoto": { "type": "string", "format": "uri", "description": "Profile picture of the freelancer." },
+        "title": { "type": "string", "description": "Title of the project." },
+        "description": { "type": "string", "description": "Detailed description of the work." },
+        "imageUrl": { "type": "string", "format": "uri", "description": "URL to an image representing the work." },
+        "link": { "type": "string", "format": "uri", "description": "External link to the live project." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Technologies or skills used." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the item was added." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the item was last updated." }
+      },
+      "required": ["userId", "title", "description"]
+    },
+    "Review": {
+      "title": "User Review",
+      "description": "A review left by one user for another after a job completion.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the review." },
+        "jobId": { "type": "string", "description": "ID of the job this review is for." },
+        "reviewerId": { "type": "string", "description": "UID of the user leaving the review." },
+        "revieweeId": { "type": "string", "description": "UID of the user being reviewed." },
+        "rating": { "type": "number", "description": "Rating from 1 to 5." },
+        "comment": { "type": "string", "description": "Written feedback." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the review was created." }
+      },
+      "required": ["jobId", "reviewerId", "revieweeId", "rating"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "A message sent between a client and a freelancer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the message." },
+        "jobId": { "type": "string", "description": "ID of the job context for this chat." },
+        "senderId": { "type": "string", "description": "UID of the message sender." },
+        "text": { "type": "string", "description": "Content of the message." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the message was sent." }
+      },
+      "required": ["jobId", "senderId", "text"]
+    },
+    "Notification": {
+      "title": "User Notification",
+      "description": "A notification sent to a user about platform events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the notification." },
+        "userId": { "type": "string", "description": "UID of the user receiving the notification." },
+        "title": { "type": "string", "description": "Short title of the notification." },
+        "message": { "type": "string", "description": "Full message content." },
+        "type": { "type": "string", "description": "Type of notification (e.g., 'bid_received', 'milestone_funded')." },
+        "link": { "type": "string", "description": "Optional link to navigate to." },
+        "read": { "type": "boolean", "description": "Whether the notification has been read." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the notification was created." }
+      },
+      "required": ["userId", "title", "message", "type", "read"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "A record of a payment or escrow movement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the transaction." },
+        "jobId": { "type": "string", "description": "ID of the associated job." },
+        "milestoneId": { "type": "string", "description": "ID of the associated milestone." },
+        "fromId": { "type": "string", "description": "UID of the sender." },
+        "toId": { "type": "string", "description": "UID of the recipient." },
+        "amount": { "type": "number", "description": "Amount transferred." },
+        "status": { "type": "string", "description": "Status of the transaction (e.g., 'pending', 'completed', 'failed')." },
+        "type": { "type": "string", "description": "Type of transaction (e.g., 'escrow_deposit', 'payout')." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the transaction occurred." }
+      },
+      "required": ["jobId", "fromId", "toId", "amount", "status", "type"]
     }
   },
   "firestore": {
     "/users/{userId}": { "schema": "User", "description": "User profiles and settings." },
+    "/users/{userId}/portfolio/{itemId}": { "schema": "PortfolioItem", "description": "Freelancer portfolio items." },
+    "/users/{userId}/notifications/{notificationId}": { "schema": "Notification", "description": "User-specific notifications." },
     "/jobs/{jobId}": { "schema": "Job", "description": "Job postings." },
     "/jobs/{jobId}/bids/{bidId}": { "schema": "Bid", "description": "Bids for a specific job." },
-    "/jobs/{jobId}/milestones/{milestoneId}": { "schema": "Milestone", "description": "Milestones for a specific job." }
+    "/jobs/{jobId}/milestones/{milestoneId}": { "schema": "Milestone", "description": "Milestones for a specific job." },
+    "/jobs/{jobId}/messages/{messageId}": { "schema": "Message", "description": "Chat messages for a job." },
+    "/reviews/{reviewId}": { "schema": "Review", "description": "User reviews and ratings." },
+    "/transactions/{transactionId}": { "schema": "Transaction", "description": "Platform-wide financial records." }
   }
 }
