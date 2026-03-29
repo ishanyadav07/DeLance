@@ -245,7 +245,7 @@ export const PostProject = () => {
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center gap-1 bg-surface-container-low p-1.5 rounded-xl border border-white/5 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg border border-white/5 overflow-x-auto no-scrollbar">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             const isActive = step.id === currentStep;
@@ -260,16 +260,15 @@ export const PostProject = () => {
                     }
                   }}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all shrink-0",
-                    isActive ? "bg-primary text-surface shadow-md shadow-primary/20" : 
-                    isCompleted ? "text-tertiary bg-tertiary/10" : "text-outline hover:bg-white/5"
+                    "flex items-center gap-2 px-3 py-1.5 rounded transition-all shrink-0",
+                    isActive ? "bg-primary text-surface" : 
+                    isCompleted ? "text-tertiary bg-tertiary/5" : "text-outline hover:bg-white/5"
                   )}
                 >
-                  <Icon size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">{step.label}</span>
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-widest">{step.label}</span>
                 </button>
                 {idx < steps.length - 1 && (
-                  <div className="w-2 h-[1px] bg-white/10 shrink-0"></div>
+                  <div className="w-4 h-[1px] bg-white/5 shrink-0"></div>
                 )}
               </React.Fragment>
             );
@@ -330,14 +329,14 @@ export const PostProject = () => {
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <label className="font-label text-[10px] uppercase tracking-widest text-primary font-bold">Budget</label>
+                            <label className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Budget</label>
                             <div className="flex gap-2">
                               <div className="relative flex-1">
                                 <input 
                                   value={budget}
                                   onChange={(e) => setBudget(e.target.value)}
                                   required 
-                                  className="w-full bg-surface-container-highest border border-white/5 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary/30 font-mono text-base" 
+                                  className="w-full bg-surface-container-highest border border-white/5 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary/30 font-mono text-xl font-bold tracking-tighter" 
                                   placeholder="0.00" 
                                   type="number" 
                                 />
@@ -345,7 +344,7 @@ export const PostProject = () => {
                               <select 
                                 value={currency}
                                 onChange={(e) => setCurrency(e.target.value)}
-                                className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
+                                className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-mono font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
                               >
                                 <option>USD</option>
                                 <option>EUR</option>

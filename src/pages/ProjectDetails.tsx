@@ -286,146 +286,71 @@ export const ProjectDetails = () => {
         <span className="font-label text-xs uppercase tracking-widest">Back to Browse</span>
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-10 sm:mb-12">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex flex-wrap gap-3">
-            <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-tertiary/20">Verified Client</span>
-            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-tighter border border-primary/20">Automated Escrow</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 border border-white/10 rounded-2xl overflow-hidden mb-12">
+        <div className="lg:col-span-2 p-8 sm:p-12 space-y-8 border-b lg:border-b-0 lg:border-r border-white/10">
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-tertiary/10 text-tertiary border border-tertiary/20 rounded">Verified Client</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded">Automated Escrow</span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-headline font-black tracking-tight leading-[0.9] uppercase">
+              {project.title}
+            </h1>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold font-headline tracking-tight leading-tight">
-            {project.title}
-          </h1>
-          <div className="p-4 bg-surface-container-highest/30 border border-white/5 rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline">
-                <ShieldCheck size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-bold">Automated Escrow Managed</p>
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">Status: {project.status}</p>
+
+          <div className="flex flex-wrap items-center gap-8 pt-4 border-t border-white/5">
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-outline">Posted</p>
+              <p className="text-sm font-bold">{postedDate}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-outline">Category</p>
+              <p className="text-sm font-bold uppercase tracking-wider text-primary">{project.category}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-outline">Location</p>
+              <p className="text-sm font-bold">Remote / Global</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 sm:p-12 bg-surface-container-low/30 flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-outline">Project Budget</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black font-headline tracking-tighter">{project.budget.toLocaleString()}</span>
+                <span className="text-primary font-mono font-bold text-xl">{project.currency}</span>
               </div>
             </div>
             
-            <div className="flex gap-2">
-              {/* Accept Job Button (Freelancer) */}
-              {project.status === 'open' && user?.uid !== project.clientId && (
-                <button 
-                  onClick={handleAcceptPlatform}
-                  className="px-4 py-2 bg-primary text-surface rounded-lg text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                >
-                  Accept Project
-                </button>
-              )}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-tertiary">
+                <Lock size={14} />
+                <span className="font-mono text-[9px] uppercase tracking-widest font-bold">Escrow Protected</span>
+              </div>
+              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-tertiary w-full opacity-50"></div>
+              </div>
             </div>
           </div>
 
-          {/* Admin Controls */}
-          {isAdmin && (
-            <div className="p-4 bg-error/5 border border-error/20 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 text-error">
-                <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Admin Control Panel</span>
+          <div className="pt-8">
+            {project.status === 'open' && user?.uid !== project.clientId && (
+              <button 
+                onClick={handleAcceptPlatform}
+                className="w-full py-4 bg-primary text-surface font-mono text-[11px] font-black uppercase tracking-[0.2em] hover:brightness-110 active:scale-[0.98] transition-all shadow-2xl shadow-primary/20"
+              >
+                Accept Project
+              </button>
+            )}
+            {project.status !== 'open' && (
+              <div className="w-full py-4 border border-white/10 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-outline">
+                Status: {project.status}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {['open', 'in-progress', 'submitted', 'completed', 'disputed'].map(s => (
-                  <button 
-                    key={s}
-                    onClick={() => handleAdminStatusUpdate(s)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all",
-                      project.status === s ? "bg-error text-white" : "bg-error/10 text-error hover:bg-error/20"
-                    )}
-                  >
-                    Set {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Bids Section for Client */}
-          {user?.uid === project.clientId && project.status === 'open' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold font-headline">Received Proposals ({bids.length})</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4">
-                {bids.length > 0 ? bids.map((bid) => (
-                  <GlassCard key={bid.id} className="p-6 border border-white/5 hover:border-primary/20 transition-all">
-                    <div className="flex flex-col md:flex-row justify-between gap-4">
-                      <div className="space-y-3 flex-1">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-outline">
-                            <User size={20} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-base">{bid.freelancerName}</p>
-                            <p className="text-[10px] text-outline font-label uppercase tracking-widest">Freelancer ID: {bid.freelancerId.slice(0, 8)}...</p>
-                          </div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-xl">
-                          <p className="text-sm text-on-surface-variant leading-relaxed italic">"{bid.proposal}"</p>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] font-label uppercase tracking-widest text-outline">
-                          <span>Applied: {bid.createdAt?.toDate ? bid.createdAt.toDate().toLocaleDateString() : 'Recently'}</span>
-                          <span className="text-primary font-bold">Bid: {bid.amount} {project.currency}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-row md:flex-col gap-2 justify-end">
-                        <button 
-                          onClick={() => handleAcceptBid(bid)}
-                          className="px-6 py-3 bg-primary text-surface rounded-xl font-bold text-[10px] uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
-                        >
-                          Accept Proposal
-                        </button>
-                        <button className="px-6 py-3 bg-white/5 text-outline rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all">
-                          View Profile
-                        </button>
-                      </div>
-                    </div>
-                  </GlassCard>
-                )) : (
-                  <div className="p-12 text-center bg-surface-container-low/30 rounded-2xl border border-dashed border-white/10">
-                    <p className="text-on-surface-variant italic">No proposals received yet. Your project is live on the marketplace.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-            <div className="flex flex-wrap items-center gap-6 text-on-surface-variant text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-primary" />
-                <span>Posted {postedDate}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-primary" />
-                <span>Client Rating: {client?.reputation || 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-primary" />
-                <span>Remote / Global</span>
-              </div>
-            </div>
+            )}
+          </div>
         </div>
-
-        <GlassCard className="p-6 sm:p-8 rounded-2xl border border-white/5 flex flex-col justify-between">
-          <div>
-            <p className="font-label text-xs uppercase tracking-widest text-on-surface-variant mb-2">Project Budget</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold font-headline">{project.budget}</span>
-              <span className="text-primary font-label font-bold text-xl uppercase">{project.currency}</span>
-            </div>
-            <p className="text-on-surface-variant font-label text-sm mt-1">Total Budget</p>
-          </div>
-          <div className="mt-6 pt-6 border-t border-white/5">
-            <div className="flex items-center gap-2 text-tertiary">
-              <Lock size={16} fill="currentColor" />
-              <span className="text-xs font-label uppercase font-bold tracking-widest">Automated Escrow Protected</span>
-            </div>
-          </div>
-        </GlassCard>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -445,66 +370,75 @@ export const ProjectDetails = () => {
             </div>
           </section>
 
-          <section className="space-y-6">
-            <h2 className="text-2xl font-bold font-headline">Milestone Breakdown</h2>
+          <section className="space-y-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-3xl font-headline font-black uppercase tracking-tight">Milestones</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-tertiary">Escrow Active</span>
+              </div>
+            </div>
+            
             <div className="space-y-4">
               {milestones.length > 0 ? milestones.map((m, i) => (
-                <GlassCard key={i} className={cn(
-                  "p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-l-4",
-                  m.status === 'funded' || m.status === 'delivered' ? "border-primary" : 
-                  m.status === 'approved' ? "border-success" : "border-outline-variant"
-                )}>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>{m.title}</p>
-                      <span className={cn(
-                        "text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm",
-                        m.status === 'pending' ? "bg-surface-container text-outline" :
-                        m.status === 'funded' ? "bg-primary/20 text-primary" :
-                        m.status === 'delivered' ? "bg-tertiary/20 text-tertiary" :
-                        m.status === 'approved' ? "bg-success/20 text-success" :
-                        "bg-error/20 text-error"
-                      )}>
-                        {m.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-on-surface-variant font-label mt-1">{m.description || 'No deliverables specified'}</p>
-                  </div>
-                  <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="text-left sm:text-right">
-                      <p className={cn("font-headline font-bold", m.status === 'pending' && "text-on-surface/60")}>
-                        {m.amount.toLocaleString()} <span className="text-[10px] text-primary">{project.currency}</span>
-                      </p>
-                      <p className="text-[9px] font-label text-on-surface-variant uppercase tracking-widest">
-                        {m.percentage || Math.round((m.amount / project.budget) * 100)}% of total
-                      </p>
+                <div key={i} className="group relative bg-surface-container-low/30 border border-white/10 rounded-xl p-6 transition-all hover:bg-surface-container-low/50">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-outline">0{i + 1}</span>
+                        <h3 className="font-headline font-bold text-lg uppercase tracking-tight">{m.title}</h3>
+                        <span className={cn(
+                          "font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                          m.status === 'pending' ? "border-white/10 text-outline" :
+                          m.status === 'funded' ? "border-primary/50 text-primary bg-primary/5" :
+                          m.status === 'delivered' ? "border-tertiary/50 text-tertiary bg-tertiary/5" :
+                          m.status === 'approved' ? "border-success/50 text-success bg-success/5" :
+                          "border-error/50 text-error bg-error/5"
+                        )}>
+                          {m.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant leading-relaxed max-w-2xl">{m.description || 'No deliverables specified'}</p>
                     </div>
                     
-                    <div className="flex gap-2">
-                      {/* Freelancer: Deliver */}
-                      {m.status === 'funded' && user?.uid === project.freelancerId && (
-                        <Link 
-                          to={`/submit-work/${id}/${m.id}`}
-                          className="px-3 py-1.5 bg-tertiary text-surface rounded-lg text-[9px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
-                        >
-                          Deliver
-                        </Link>
-                      )}
+                    <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end">
+                      <div className="text-left md:text-right">
+                        <p className="font-mono text-xl font-bold tracking-tighter">
+                          {m.amount.toLocaleString()} <span className="text-[10px] text-primary">{project.currency}</span>
+                        </p>
+                        <p className="font-mono text-[9px] text-outline uppercase tracking-widest">
+                          {m.percentage || Math.round((m.amount / project.budget) * 100)}% Allocation
+                        </p>
+                      </div>
                       
-                      {/* Client: Approve */}
-                      {m.status === 'delivered' && user?.uid === project.clientId && (
-                        <button 
-                          onClick={() => handleApproveMilestone(m.id)}
-                          className="px-3 py-1.5 bg-primary text-surface rounded-lg text-[9px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
-                        >
-                          Approve
-                        </button>
-                      )}
+                      <div className="flex gap-2">
+                        {/* Freelancer: Deliver */}
+                        {m.status === 'funded' && user?.uid === project.freelancerId && (
+                          <Link 
+                            to={`/submit-work/${id}/${m.id}`}
+                            className="px-6 py-2 bg-tertiary text-surface font-mono text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
+                          >
+                            Deliver
+                          </Link>
+                        )}
+                        
+                        {/* Client: Approve */}
+                        {m.status === 'delivered' && user?.uid === project.clientId && (
+                          <button 
+                            onClick={() => handleApproveMilestone(m.id)}
+                            className="px-6 py-2 bg-primary text-surface font-mono text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all"
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </GlassCard>
+                </div>
               )) : (
-                <p className="text-on-surface-variant italic text-sm">No milestones defined for this project.</p>
+                <div className="p-12 text-center border border-dashed border-white/10 rounded-2xl">
+                  <p className="font-mono text-xs text-outline uppercase tracking-widest">No milestones defined</p>
+                </div>
               )}
             </div>
           </section>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, Filter, Lock, Rocket, ShieldCheck, CheckCircle, FileText, Gavel, ArrowRight, Loader2, Clock, User } from 'lucide-react';
+import { Search, Filter, Lock, Rocket, ShieldCheck, CheckCircle, FileText, Gavel, ArrowRight, Loader2, Clock, User, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
@@ -13,6 +13,9 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const [myJobs, setMyJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [myBids, setMyBids] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'client' | 'freelancer'>('client');
 
   useEffect(() => {
     if (!user) return;
@@ -31,7 +34,21 @@ export const Dashboard = () => {
       setLoading(false);
     });
 
-    return () => unsubscribeJobs();
+    // Fetch active projects for freelancer
+    const freelancerJobsQuery = query(jobsCollection, where('freelancerId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubscribeFreelancerJobs = onSnapshot(freelancerJobsQuery, (snapshot) => {
+      const freelancerJobs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      // We'll use this to show "Working On" projects
+      if (freelancerJobs.length > 0) {
+        // If user has freelancer jobs, maybe default to freelancer tab if they have no client jobs?
+        // For now, just keep it simple.
+      }
+    });
+
+    return () => {
+      unsubscribeJobs();
+      unsubscribeFreelancerJobs();
+    };
   }, [user, isAdmin]);
 
   if (authLoading || loading) {
@@ -45,9 +62,9 @@ export const Dashboard = () => {
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-3xl font-headline font-bold mb-4">Access Denied</h2>
-        <p className="text-on-surface-variant mb-8">Please sign in to view your dashboard and manage your projects.</p>
-        <Link to="/" className="px-8 py-4 bg-primary text-surface rounded-xl font-bold">
+        <h2 className="text-3xl font-headline font-bold mb-4 uppercase tracking-tighter">Access Denied</h2>
+        <p className="text-on-surface-variant mb-8 font-sans">Please sign in to view your dashboard and manage your projects.</p>
+        <Link to="/" className="px-10 py-5 bg-primary text-surface rounded-xl font-bold uppercase tracking-widest text-xs">
           Go to Home
         </Link>
       </div>
@@ -56,86 +73,75 @@ export const Dashboard = () => {
 
   const totalBudget = myJobs.reduce((acc, job) => acc + (Number(job.budget) || 0), 0);
   const activeJobsCount = myJobs.filter(j => j.status === 'open').length;
-  const completedJobsCount = myJobs.filter(j => j.status === 'completed').length;
+  const inProgressCount = myJobs.filter(j => j.status === 'in-progress').length;
 
   const stats = [
     { 
-      label: isAdmin ? 'Total Platform Volume' : 'Total Budget in Automated Escrow', 
+      label: isAdmin ? 'Platform Volume' : 'Total Escrow', 
       value: `${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'USD'}`, 
-      change: `${myJobs.length} total ${isAdmin ? 'platform' : 'personal'} jobs`, 
+      change: `${myJobs.length} total projects`, 
       icon: Lock, 
       color: 'text-primary' 
     },
     { 
-      label: 'Open for Bids', 
+      label: 'Open Bids', 
       value: activeJobsCount.toString().padStart(2, '0'), 
-      change: 'Awaiting freelancer selection', 
+      change: 'Awaiting selection', 
       icon: Rocket, 
       color: 'text-secondary' 
     },
     { 
-      label: 'Completed Jobs', 
-      value: completedJobsCount.toString().padStart(2, '0'), 
-      change: '100% success rate', 
-      icon: ShieldCheck, 
+      label: 'Active Work', 
+      value: inProgressCount.toString().padStart(2, '0'), 
+      change: 'In development', 
+      icon: Zap, 
       color: 'text-tertiary' 
     },
   ];
 
-  const pulse = [
-    { time: 'Just now', title: 'Dashboard Connected', desc: 'Your real-time platform dashboard is now active and synced with Firestore.', icon: CheckCircle, color: 'text-tertiary', bg: 'bg-tertiary/20' },
-    ...myJobs.slice(0, 2).map(job => ({
-      time: job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recently',
-      title: 'Project Posted',
-      desc: `"${job.title}" is now live and accepting bids from the network.`,
-      icon: Rocket,
-      color: 'text-primary',
-      bg: 'bg-primary/20'
-    }))
-  ];
-
   return (
     <div className="max-w-7xl 2xl:max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 sm:mb-16 gap-6">
-        <div className="space-y-3">
-          <h1 className="font-headline text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface">
-            {isAdmin ? 'Admin Control Center' : `Welcome, ${user?.displayName?.split(' ')[0] || 'Freelancer'}`}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 sm:mb-16 gap-8">
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
+            <span className="font-mono text-[10px] text-primary font-bold uppercase tracking-widest">System Online</span>
+          </div>
+          <h1 className="font-headline text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter text-on-surface uppercase leading-[0.9]">
+            {isAdmin ? 'Admin' : 'Dashboard'}
           </h1>
-          <p className="text-on-surface-variant text-base md:text-lg max-w-lg font-sans">
+          <p className="text-on-surface-variant text-base md:text-lg max-w-xl font-sans opacity-80">
             {isAdmin 
               ? `Overseeing ${myJobs.length} platform projects and global volume.`
-              : `Managing ${myJobs.length} active projects. Your total secured budget is currently ${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'USD'}.`
+              : `Welcome back, ${user?.displayName?.split(' ')[0]}. You have ${myJobs.length} projects under management.`
             }
           </p>
         </div>
+        
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <button className="flex-1 sm:flex-none px-6 py-3 rounded-lg bg-surface-container-high border border-white/5 font-bold text-xs uppercase tracking-widest hover:bg-surface-container-highest transition-all">
-            Export Audit Logs
-          </button>
-          <Link to="/post-project" className="flex-1 sm:flex-none px-6 py-3 rounded-lg bg-linear-to-r from-primary to-primary-container text-surface font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all text-center">
+          <Link to="/post-project" className="flex-1 sm:flex-none px-8 py-4 bg-primary text-surface rounded-xl font-label font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 active:scale-95 transition-all text-center">
             Post New Job
           </Link>
         </div>
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
         {stats.map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
+            viewport={{ once: true }}
             transition={{ delay: i * 0.1 }}
-            className="h-full"
           >
-            <GlassCard className="p-6 rounded-xl relative overflow-hidden group h-full">
-              <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <stat.icon size={80} />
+            <GlassCard className="p-8 rounded-2xl relative overflow-hidden group border-white/5 hover:border-primary/20 transition-all">
+              <div className="absolute -right-6 -top-6 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+                <stat.icon size={120} />
               </div>
-              <p className="font-label text-[10px] text-primary uppercase tracking-widest mb-2">{stat.label}</p>
-              <h3 className="font-headline text-3xl font-bold mb-1">{stat.value}</h3>
-              <p className={cn("font-label text-xs", i === 0 ? "text-tertiary" : "text-on-surface-variant")}>
+              <p className="font-label text-[10px] text-primary uppercase tracking-[0.2em] font-bold mb-4">{stat.label}</p>
+              <h3 className="font-headline text-4xl font-black tracking-tighter mb-2">{stat.value}</h3>
+              <p className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
                 {stat.change}
               </p>
             </GlassCard>
@@ -143,95 +149,94 @@ export const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Current Projects */}
-        <div className="lg:col-span-2 2xl:col-span-3 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-headline text-xl font-bold">Current Projects</h2>
-            <Link to="/marketplace" className="text-primary text-xs font-bold hover:underline uppercase tracking-widest">View all jobs</Link>
+        <div className="lg:col-span-8 space-y-8">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <h2 className="font-headline text-2xl font-bold uppercase tracking-tight">Active Projects</h2>
+            <Link to="/marketplace" className="text-primary text-[10px] font-bold hover:underline uppercase tracking-widest">Marketplace <ArrowRight size={12} className="inline ml-1" /></Link>
           </div>
           
-          <div className="bg-surface-container-low rounded-xl border border-white/5 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="bg-surface-container/50 border-b border-white/5">
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Project Name</th>
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Freelancer / Talent</th>
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline">Automated Escrow</th>
-                  <th className="px-5 py-3 font-label text-[9px] uppercase tracking-wider text-outline text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {myJobs.length > 0 ? myJobs.map((job, i) => (
-                  <tr key={i} onClick={() => navigate(`/project/${job.id}`)} className="hover:bg-white/5 transition-colors cursor-pointer group">
-                    <td className="px-5 py-4">
-                      <p className="font-headline font-bold text-sm group-hover:text-primary transition-colors">{job.title}</p>
-                      <p className="text-[10px] text-on-surface-variant mt-0.5 font-sans">{job.category}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-surface-container overflow-hidden flex items-center justify-center text-outline">
-                          <User size={12} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-xs font-sans">{job.freelancerName || (job.status === 'open' ? 'Awaiting Bids' : 'Unassigned')}</p>
-                          <p className="font-label text-[9px] text-outline">
-                            {job.freelancerId ? `ID: ${job.freelancerId.slice(0, 6)}...` : 'Freelancer Network'}
-                          </p>
-                        </div>
+          <div className="space-y-4">
+            {myJobs.length > 0 ? myJobs.map((job, i) => (
+              <motion.div
+                key={job.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <GlassCard 
+                  onClick={() => navigate(`/project/${job.id}`)} 
+                  className="p-6 hover:bg-white/5 transition-all cursor-pointer group border-white/5 hover:border-primary/30"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-[8px] text-primary font-bold uppercase tracking-[0.2em] bg-primary/10 px-2 py-0.5 rounded-full">
+                          {job.category}
+                        </span>
+                        <span className={cn(
+                          "font-mono text-[8px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-full",
+                          job.status === 'open' ? "bg-secondary/10 text-secondary" : "bg-tertiary/10 text-tertiary"
+                        )}>
+                          {job.status}
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="font-headline font-bold text-sm">{job.budget} {job.currency}</p>
-                      <p className="font-label text-[9px] text-tertiary">Secured in Automated Escrow</p>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full font-label text-[9px] uppercase tracking-tighter",
-                        job.status === 'open' ? "bg-secondary/10 text-secondary" : 
-                        job.status === 'in-progress' ? "bg-primary/10 text-primary" :
-                        job.status === 'submitted' ? "bg-tertiary/10 text-tertiary" :
-                        job.status === 'completed' ? "bg-success/10 text-success" :
-                        "bg-error/10 text-error"
-                      )}>
-                        {job.status}
-                      </span>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center text-on-surface-variant italic text-xs">
-                      No active projects found. <Link to="/post-project" className="text-primary font-bold hover:underline">Post your first project</Link> to get started.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      <h3 className="font-headline text-lg font-bold group-hover:text-primary transition-colors">{job.title}</h3>
+                      <p className="text-xs text-on-surface-variant font-sans line-clamp-1">{job.description}</p>
+                    </div>
+                    <div className="flex items-center gap-6 sm:text-right">
+                      <div className="space-y-0.5">
+                        <p className="font-headline font-black text-xl tracking-tighter">{job.budget} <span className="text-[10px] font-mono text-on-surface-variant uppercase">{job.currency}</span></p>
+                        <p className="font-mono text-[8px] text-outline uppercase tracking-widest">Escrow Locked</p>
+                      </div>
+                      <ArrowRight size={16} className="text-outline group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )) : (
+              <div className="bg-surface-container-low py-16 rounded-2xl border border-dashed border-white/10 text-center">
+                <p className="text-on-surface-variant font-sans text-sm mb-6">No active projects found in your portfolio.</p>
+                <Link to="/post-project" className="px-8 py-4 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-primary/20 transition-all">
+                  Post Your First Project
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Pulse Feed */}
-        <div className="space-y-6">
-          <h2 className="font-headline text-xl font-bold">Pulse Feed</h2>
-          <div className="relative space-y-6 before:absolute before:inset-0 before:ml-4 before:-translate-x-px before:h-full before:w-0.5 before:bg-linear-to-b before:from-primary/30 before:via-white/5 before:to-transparent">
-            {pulse.map((item, i) => (
-              <div key={i} className="relative flex items-start gap-4 group">
-                <div className={cn("flex items-center justify-center w-8 h-8 rounded-full ring-2 ring-surface z-10 transition-transform group-hover:scale-110", item.bg, item.color)}>
-                  <item.icon size={14} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[9px] font-label text-outline mb-1 uppercase tracking-widest">{item.time}</p>
-                  <div className="bg-surface-container-low p-3 rounded-lg border border-white/5">
-                    <p className="text-xs leading-relaxed font-sans">
-                      <span className="font-bold">{item.title}:</span> {item.desc}
-                    </p>
-                  </div>
+        <div className="lg:col-span-4 space-y-8">
+          <h2 className="font-headline text-2xl font-bold uppercase tracking-tight border-b border-white/5 pb-4">Pulse</h2>
+          <div className="space-y-6">
+            {myJobs.slice(0, 4).map((job, i) => (
+              <div key={i} className="flex gap-4 group">
+                <div className="w-1 h-12 bg-linear-to-b from-primary to-transparent rounded-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
+                <div className="space-y-1">
+                  <p className="font-mono text-[8px] text-outline uppercase tracking-widest">
+                    {job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recent'}
+                  </p>
+                  <p className="text-xs font-sans leading-relaxed">
+                    <span className="font-bold text-primary uppercase text-[10px] tracking-widest mr-1">Posted:</span>
+                    {job.title} is live and synced.
+                  </p>
                 </div>
               </div>
             ))}
+            <div className="flex gap-4 group">
+              <div className="w-1 h-12 bg-linear-to-b from-tertiary to-transparent rounded-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
+              <div className="space-y-1">
+                <p className="font-mono text-[8px] text-outline uppercase tracking-widest">System</p>
+                <p className="text-xs font-sans leading-relaxed">
+                  <span className="font-bold text-tertiary uppercase text-[10px] tracking-widest mr-1">Ready:</span>
+                  Automated Escrow initialized for all new postings.
+                </p>
+              </div>
+            </div>
           </div>
-          <button className="w-full py-2 rounded-lg border border-white/10 text-[10px] font-medium text-on-surface-variant hover:bg-white/5 transition-all uppercase tracking-widest">
-            View Full History
+          <button className="w-full py-4 rounded-xl border border-white/5 text-[10px] font-bold text-on-surface-variant hover:bg-white/5 transition-all uppercase tracking-widest">
+            Audit Full History
           </button>
         </div>
       </div>

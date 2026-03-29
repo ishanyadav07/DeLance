@@ -59,28 +59,25 @@ export const LandingPage = () => {
             
             <div className="space-y-4">
               <h1 className="font-headline text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-[0.9] uppercase">
-                The Independent <br /> 
-                <span className="text-gradient-primary">Professional's</span> <br /> 
-                Marketplace
+                The <span className="text-gradient-primary">Sovereign</span> <br /> 
+                Talent <br /> 
+                Network
               </h1>
               <div className="h-1 w-24 bg-primary/30 rounded-full"></div>
             </div>
 
             <p className="text-on-surface-variant text-base md:text-lg max-w-2xl leading-relaxed font-medium opacity-80">
-              Eliminate intermediaries with a secure platform designed for high-end digital engineering and sovereign creative talent.
+              A high-performance marketplace for elite digital engineers and creative specialists. 
+              Direct collaboration. Automated escrow. Zero intermediaries.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-start gap-6 pt-4">
-              <Link to="/marketplace" className="w-full sm:w-auto px-12 py-6 bg-primary text-surface rounded-2xl font-label font-bold uppercase tracking-widest text-sm hover:scale-[1.05] active:scale-95 transition-all shadow-2xl shadow-primary/40 flex items-center justify-center gap-3">
-                Browse Jobs <ArrowRight size={18} />
+            <div className="flex flex-col sm:flex-row items-center justify-start gap-4 pt-4">
+              <Link to="/marketplace" className="w-full sm:w-auto px-10 py-5 bg-primary text-surface rounded-xl font-label font-bold uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3">
+                Find Work <ArrowRight size={16} />
               </Link>
-              <button 
-                onClick={handleGetStarted}
-                disabled={loading || isLoggingIn}
-                className="w-full sm:w-auto px-12 py-6 glass-card text-white rounded-2xl font-label font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition-all active:scale-95 border border-white/10 flex items-center justify-center disabled:opacity-50"
-              >
-                {user ? 'Go to Dashboard' : (loading || isLoggingIn ? (isLoggingIn ? 'Signing in...' : 'Connecting...') : 'Get Started')}
-              </button>
+              <Link to="/post-project" className="w-full sm:w-auto px-10 py-5 bg-surface-container-highest text-white rounded-xl font-label font-bold uppercase tracking-widest text-xs hover:bg-white/10 transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-3">
+                Hire Talent <Zap size={16} className="text-secondary" />
+              </Link>
             </div>
           </motion.div>
 
