@@ -9,7 +9,9 @@ import {
   CheckCircle,
   FileText,
   CheckCircle2,
-  Loader2
+  Loader2,
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
@@ -18,6 +20,8 @@ import { GradientText } from '../components/ui/GradientText';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
+import { submitWork as submitContractWork } from '../services/contractService';
+import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 
 export const SubmitWork = () => {
   const { jobId, milestoneId } = useParams();
@@ -29,6 +33,7 @@ export const SubmitWork = () => {
   const [project, setProject] = useState<any>(null);
   const [milestone, setMilestone] = useState<any>(null);
   const [notes, setNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,26 +63,42 @@ export const SubmitWork = () => {
   }, [jobId, milestoneId]);
 
   const handleSubmit = async () => {
-    if (!jobId || !milestoneId || !user) return;
+    if (!jobId || !milestoneId || !user || !project.contractJobId) return;
     
     setIsSubmitting(true);
     try {
-      // 1. Update milestone status
-      await updateDoc(doc(db, `jobs/${jobId}/milestones`, milestoneId), {
-        status: 'delivered',
-        submissionNotes: notes,
-        submittedAt: serverTimestamp()
-      });
+      // 1. Call Smart Contract
+      // For this demo, we'll use the notes as the work link
+      await submitContractWork(project.contractJobId, notes);
 
-      // 2. Update job status to 'submitted'
-      await updateDoc(doc(db, 'jobs', jobId), {
-        status: 'submitted',
-        lastSubmissionAt: serverTimestamp()
-      });
+      // 2. Update Firestore
+      try {
+        // Update milestone status
+        await updateDoc(doc(db, `jobs/${jobId}/milestones`, milestoneId), {
+          status: 'delivered',
+          submissionNotes: notes,
+          submittedAt: serverTimestamp()
+        });
+
+        // Update job status to 'submitted'
+        await updateDoc(doc(db, 'jobs', jobId), {
+          status: 'submitted',
+          lastSubmissionAt: serverTimestamp()
+        });
+      } catch (dbErr) {
+        handleFirestoreError(dbErr, OperationType.UPDATE, `jobs/${jobId}`);
+      }
 
       setIsSubmitted(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting work:", error);
+      let errorMessage = error.message || 'Failed to submit work. Please try again.';
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
+      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        errorMessage = 'Transaction was rejected in your wallet.';
+      }
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -136,6 +157,34 @@ export const SubmitWork = () => {
       </Link>
 
       <header className="mb-12">
+        {error && (
+          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+            {error.includes('Insufficient funds') && (
+              <div className="ml-6 flex flex-wrap gap-3">
+                <a 
+                  href="https://sepolia-faucet.pk910.de/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-bold flex items-center gap-1"
+                >
+                  Sepolia Faucet <ExternalLink size={12} />
+                </a>
+                <a 
+                  href="https://faucet.quicknode.com/ethereum/sepolia" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-bold flex items-center gap-1"
+                >
+                  QuickNode Faucet <ExternalLink size={12} />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <span className="font-label text-primary font-bold tracking-widest text-xs uppercase mb-2 block">Active Project</span>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, Menu, ChevronDown, User, Settings, LogOut, CheckCircle2, Clock, Shield } from 'lucide-react';
+import { Bell, Menu, ChevronDown, User, Settings, LogOut, CheckCircle2, Clock, Shield, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../ui/GlassCard';
 import { GradientText } from '../ui/GradientText';
 import { useFirebase } from '../FirebaseProvider';
+import { useWeb3 } from '../Web3Provider';
 import { signInWithGoogle, signOut } from '../../services/authService';
 
 export const Navbar = () => {
@@ -15,6 +16,7 @@ export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { user, loading, isAdmin } = useFirebase();
+  const { account: walletAddress, connectWallet, loading: isConnectingWallet, isCorrectNetwork } = useWeb3();
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const showSidebar = location.pathname !== '/';
@@ -22,8 +24,13 @@ export const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
+    
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const formatAddress = (address: string) => {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
 
   const handleLogin = async () => {
     if (isLoggingIn) return;
@@ -105,6 +112,29 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Web3 Wallet Connect Button */}
+          {walletAddress ? (
+            <div className={cn(
+              "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border text-xs font-mono",
+              isCorrectNetwork ? "border-primary/30 text-primary" : "border-error/30 text-error"
+            )}>
+              <div className={cn(
+                "w-2 h-2 rounded-full animate-pulse",
+                isCorrectNetwork ? "bg-primary" : "bg-error"
+              )}></div>
+              {isCorrectNetwork ? formatAddress(walletAddress) : 'Wrong Network'}
+            </div>
+          ) : (
+            <button 
+              onClick={connectWallet}
+              disabled={isConnectingWallet}
+              className="hidden md:flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 text-on-surface px-4 py-1.5 rounded-full font-label font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50"
+            >
+              <Wallet size={14} className="text-primary" />
+              {isConnectingWallet ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          )}
+
           {user ? (
             <>
               {/* Notification Center */}

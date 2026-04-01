@@ -180,7 +180,7 @@ service cloud.firestore {
     }
 
     function isValidJob(data) {
-      return hasOnlyAllowedFields(['id', 'clientId', 'clientName', 'clientPhotoURL', 'freelancerId', 'freelancerName', 'freelancerPhotoURL', 'title', 'description', 'budget', 'currency', 'category', 'status', 'createdAt', 'tags', 'bidCount']) &&
+      return hasOnlyAllowedFields(['id', 'clientId', 'clientName', 'clientPhotoURL', 'freelancerId', 'freelancerName', 'freelancerPhotoURL', 'title', 'description', 'budget', 'currency', 'category', 'status', 'createdAt', 'tags', 'bidCount', 'contractJobId', 'lastSubmissionAt']) &&
              (!('id' in data) || data.id is string) &&
              (!('clientId' in data) || data.clientId is string) &&
              (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() < 200)) &&
@@ -196,7 +196,9 @@ service cloud.firestore {
              (!('freelancerId' in data) || data.freelancerId is string) &&
              (!('freelancerName' in data) || data.freelancerName is string) &&
              (!('freelancerPhotoURL' in data) || isValidUrl(data.freelancerPhotoURL) || data.freelancerPhotoURL == "") &&
-             (!('bidCount' in data) || data.bidCount is number);
+             (!('bidCount' in data) || data.bidCount is number) &&
+             (!('contractJobId' in data) || data.contractJobId is number || data.contractJobId == null) &&
+             (!('lastSubmissionAt' in data) || data.lastSubmissionAt is timestamp);
     }
 
     function isValidBid(data) {
@@ -213,14 +215,16 @@ service cloud.firestore {
     }
 
     function isValidMilestone(data) {
-      return hasOnlyAllowedFields(['id', 'jobId', 'title', 'amount', 'percentage', 'status', 'description']) &&
+      return hasOnlyAllowedFields(['id', 'jobId', 'title', 'amount', 'percentage', 'status', 'description', 'submissionNotes', 'submittedAt']) &&
              (!('id' in data) || data.id is string) &&
              (!('jobId' in data) || data.jobId is string) &&
              (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() < 200)) &&
              (!('amount' in data) || (data.amount is number && data.amount >= 0)) &&
              (!('status' in data) || (data.status in ['pending', 'funded', 'delivered', 'approved', 'disputed'])) &&
              (!('description' in data) || data.description is string) &&
-             (!('percentage' in data) || data.percentage is number);
+             (!('percentage' in data) || data.percentage is number) &&
+             (!('submissionNotes' in data) || data.submissionNotes is string) &&
+             (!('submittedAt' in data) || data.submittedAt is timestamp);
     }
 
     function isValidPortfolioItem(data) {

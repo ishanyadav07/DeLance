@@ -35,7 +35,8 @@
         "category": { "type": "string", "description": "Project category." },
         "status": { "type": "string", "enum": ["open", "active", "completed", "disputed"], "description": "Current status of the job." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the job was posted." },
-        "tags": { "type": "array", "items": { "type": "string" }, "description": "Skills or categories for the job." }
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Skills or categories for the job." },
+        "contractJobId": { "type": "number", "description": "The ID of the job on the smart contract." }
       },
       "required": ["clientId", "title", "budget", "status", "category"]
     },
@@ -64,7 +65,9 @@
         "title": { "type": "string", "description": "Title of the milestone." },
         "amount": { "type": "number", "description": "Amount to be released upon completion." },
         "status": { "type": "string", "enum": ["pending", "funded", "delivered", "approved", "disputed"], "description": "Current status of the milestone." },
-        "description": { "type": "string", "description": "Description of the milestone deliverables." }
+        "description": { "type": "string", "description": "Description of the milestone deliverables." },
+        "submissionNotes": { "type": "string", "description": "Notes provided by the freelancer upon submission." },
+        "submittedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the work was submitted." }
       },
       "required": ["jobId", "title", "amount", "status"]
     },

@@ -28,7 +28,7 @@ import { GradientText } from '../components/ui/GradientText';
 import { useFirebase } from '../components/FirebaseProvider';
 import { db } from '../firebase';
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, setDoc } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../services/authService';
+import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 
 export const Profile = () => {
   const { id } = useParams();

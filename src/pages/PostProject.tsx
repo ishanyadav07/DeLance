@@ -16,14 +16,17 @@ import {
   Target,
   Info,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
 import { collection, addDoc, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
+import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { createJob as createContractJob } from '../services/contractService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 
@@ -39,6 +42,7 @@ interface Milestone {
 export const PostProject = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useFirebase();
+  const { account, balance, isCorrectNetwork } = useWeb3();
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +52,7 @@ export const PostProject = () => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Backend');
   const [budget, setBudget] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('ETH');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
@@ -122,20 +126,42 @@ export const PostProject = () => {
     setError(null);
 
     try {
-      const batch = writeBatch(db);
-      
-      // 1. Create the job document
-      const jobRef = doc(collection(db, 'jobs'));
+      // 1. Call Smart Contract first
       const parsedBudget = parseFloat(budget);
-      
       if (isNaN(parsedBudget) || parsedBudget <= 0) {
         setError('Please enter a valid budget amount.');
         setIsSubmitting(false);
         return;
       }
 
+      // Check balance if currency is ETH
+      if (currency === 'ETH' && balance) {
+        const currentBalance = parseFloat(balance);
+        if (currentBalance < parsedBudget) {
+          setError(`Insufficient balance. You have ${currentBalance} ETH but need ${parsedBudget} ETH plus gas fees.`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (!isCorrectNetwork) {
+        setError('Please switch to the Sepolia Testnet in your wallet.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // We need to convert the budget to ETH string for the contract
+      // For now, let's assume the budget input is in ETH if the currency is ETH, 
+      // or just use it as ETH for this demo.
+      const contractJobId = await createContractJob(description, budget);
+      
+      // 2. Create the job document in Firestore
+      const batch = writeBatch(db);
+      const jobRef = doc(collection(db, 'jobs'));
+
       const jobData = {
         id: jobRef.id,
+        contractJobId,
         clientId: user.uid,
         clientName: user.displayName || 'Anonymous Client',
         clientPhotoURL: user.photoURL || '',
@@ -178,7 +204,13 @@ export const PostProject = () => {
       setIsSubmitted(true);
     } catch (err: any) {
       console.error('Error posting project:', err);
-      setError(err.message || 'Failed to post project. Please try again.');
+      let errorMessage = err.message || 'Failed to post project. Please try again.';
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds in your wallet. Please ensure you have enough Sepolia ETH to cover the budget and gas fees. You can get free Sepolia ETH from a faucet.';
+      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        errorMessage = 'Transaction was rejected in your wallet.';
+      }
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -283,9 +315,31 @@ export const PostProject = () => {
             <form onSubmit={handleSubmit}>
               <div className="p-6 md:p-8">
                 {error && (
-                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive text-sm mb-6">
-                    <AlertCircle size={18} />
-                    <p>{error}</p>
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex flex-col gap-2 text-destructive text-sm mb-6">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle size={18} />
+                      <p>{error}</p>
+                    </div>
+                    {error.includes('Insufficient funds') && (
+                      <div className="ml-7 flex flex-wrap gap-2">
+                        <a 
+                          href="https://sepolia-faucet.pk910.de/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-bold flex items-center gap-1"
+                        >
+                          Sepolia Faucet <ExternalLink size={12} />
+                        </a>
+                        <a 
+                          href="https://faucet.quicknode.com/ethereum/sepolia" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-bold flex items-center gap-1"
+                        >
+                          QuickNode Faucet <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
                 <AnimatePresence mode="wait">
@@ -329,7 +383,14 @@ export const PostProject = () => {
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <label className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Budget</label>
+                            <div className="flex justify-between items-center">
+                              <label className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Budget</label>
+                              {account && balance && (
+                                <span className="text-[10px] font-mono text-outline/60">
+                                  Balance: <span className="text-primary/80">{parseFloat(balance).toFixed(4)} ETH</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="flex gap-2">
                               <div className="relative flex-1">
                                 <input 
@@ -346,6 +407,7 @@ export const PostProject = () => {
                                 onChange={(e) => setCurrency(e.target.value)}
                                 className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-mono font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
                               >
+                                <option>ETH</option>
                                 <option>USD</option>
                                 <option>EUR</option>
                                 <option>GBP</option>

@@ -11,7 +11,9 @@ import {
   User,
   Lock,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
@@ -19,6 +21,7 @@ import { doc, getDoc, collection, onSnapshot, query, addDoc, serverTimestamp, up
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { acceptJob as acceptContractJob, approveWork as approveContractWork } from '../services/contractService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
@@ -148,29 +151,45 @@ export const ProjectDetails = () => {
   };
 
   const handleAcceptPlatform = async () => {
-    if (!id || !user) return;
+    if (!id || !user || !project.contractJobId) return;
     try {
       setIsSubmitting(true);
-      const batch = writeBatch(db);
       
-      // 1. Update job status and assigned freelancer
-      const jobRef = doc(db, 'jobs', id);
-      batch.update(jobRef, {
-        status: 'in-progress',
-        freelancerId: user.uid,
-        freelancerName: user.displayName || 'Anonymous'
-      });
+      // 1. Call Smart Contract
+      await acceptContractJob(project.contractJobId);
 
-      // 2. Update all milestones to 'funded'
-      milestones.forEach(m => {
-        const milestoneRef = doc(db, `jobs/${id}/milestones`, m.id);
-        batch.update(milestoneRef, { status: 'funded' });
-      });
+      // 2. Update Firestore
+      try {
+        const batch = writeBatch(db);
+        
+        // Update job status and assigned freelancer
+        const jobRef = doc(db, 'jobs', id);
+        batch.update(jobRef, {
+          status: 'in-progress',
+          freelancerId: user.uid,
+          freelancerName: user.displayName || 'Anonymous'
+        });
 
-      await batch.commit();
+        // Update all milestones to 'funded'
+        milestones.forEach(m => {
+          const milestoneRef = doc(db, `jobs/${id}/milestones`, m.id);
+          batch.update(milestoneRef, { status: 'funded' });
+        });
+
+        await batch.commit();
+      } catch (dbErr) {
+        handleFirestoreError(dbErr, OperationType.WRITE, `jobs/${id}`);
+      }
       setProject((prev: any) => ({ ...prev, status: 'in-progress', freelancerId: user.uid, freelancerName: user.displayName || 'Anonymous' }));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accepting job:", err);
+      let errorMessage = err.message || 'Failed to accept job. Please try again.';
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
+      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        errorMessage = 'Transaction was rejected in your wallet.';
+      }
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -180,18 +199,36 @@ export const ProjectDetails = () => {
 
 
   const handleApproveMilestone = async (milestoneId: string) => {
-    if (!id || !user) return;
+    if (!id || !user || !project.contractJobId) return;
     try {
-      const milestoneRef = doc(db, `jobs/${id}/milestones`, milestoneId);
-      await updateDoc(milestoneRef, { status: 'approved' });
-      
-      // Check if all milestones are approved
-      const allApproved = milestones.every(m => m.id === milestoneId ? true : m.status === 'approved');
-      if (allApproved) {
-        await updateDoc(doc(db, 'jobs', id), { status: 'completed' });
+      // 1. Call Smart Contract
+      // NOTE: In our current simple contract, approveWork releases ALL funds.
+      // In a real app with milestones, the contract would handle individual releases.
+      // For this demo, we'll call approveWork on the contract.
+      await approveContractWork(project.contractJobId);
+
+      // 2. Update Firestore
+      try {
+        const milestoneRef = doc(db, `jobs/${id}/milestones`, milestoneId);
+        await updateDoc(milestoneRef, { status: 'approved' });
+        
+        // Check if all milestones are approved
+        const allApproved = milestones.every(m => m.id === milestoneId ? true : m.status === 'approved');
+        if (allApproved) {
+          await updateDoc(doc(db, 'jobs', id), { status: 'completed' });
+        }
+      } catch (dbErr) {
+        handleFirestoreError(dbErr, OperationType.UPDATE, `jobs/${id}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error approving milestone:", err);
+      let errorMessage = err.message || 'Failed to approve milestone. Please try again.';
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
+      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        errorMessage = 'Transaction was rejected in your wallet.';
+      }
+      setError(errorMessage);
     }
   };
 
@@ -285,6 +322,35 @@ export const ProjectDetails = () => {
         <ArrowLeft size={16} />
         <span className="font-label text-xs uppercase tracking-widest">Back to Browse</span>
       </Link>
+
+      {error && (
+        <div className="mb-8 p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+          {error.includes('Insufficient funds') && (
+            <div className="ml-6 flex flex-wrap gap-3">
+              <a 
+                href="https://sepolia-faucet.pk910.de/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-bold flex items-center gap-1"
+              >
+                Sepolia Faucet <ExternalLink size={12} />
+              </a>
+              <a 
+                href="https://faucet.quicknode.com/ethereum/sepolia" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-bold flex items-center gap-1"
+              >
+                QuickNode Faucet <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 border border-white/10 rounded-2xl overflow-hidden mb-12">
         <div className="lg:col-span-2 p-8 sm:p-12 space-y-8 border-b lg:border-b-0 lg:border-r border-white/10">
@@ -473,8 +539,23 @@ export const ProjectDetails = () => {
               ) : (
                 <div className="space-y-4">
                   {error && (
-                    <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-xs font-bold mb-4">
-                      {error}
+                    <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-xs font-bold mb-4 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={14} />
+                        <span>{error}</span>
+                      </div>
+                      {error.includes('Insufficient funds') && (
+                        <div className="ml-6 flex flex-wrap gap-2">
+                          <a 
+                            href="https://sepolia-faucet.pk910.de/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline font-bold flex items-center gap-1"
+                          >
+                            Faucet <ExternalLink size={10} />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
