@@ -21,7 +21,7 @@ import { doc, getDoc, collection, onSnapshot, query, addDoc, serverTimestamp, up
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
-import { acceptJob as acceptContractJob, approveWork as approveContractWork } from '../services/contractService';
+import { acceptJob as acceptContractJob, approveWork as approveContractWork, refund as refundContract } from '../services/contractService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
@@ -232,6 +232,21 @@ export const ProjectDetails = () => {
     }
   };
 
+  const handleRefund = async () => {
+    if (!id || !user || !project.contractJobId) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await refundContract(project.contractJobId);
+      // Firestore will be updated by the BlockchainListener
+    } catch (err: any) {
+      console.error('Error refunding project:', err);
+      setError(err.message || 'Failed to refund project.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAdminStatusUpdate = async (newStatus: string) => {
     if (!id) return;
     try {
@@ -408,6 +423,15 @@ export const ProjectDetails = () => {
                 className="w-full py-4 bg-primary text-surface font-mono text-[11px] font-black uppercase tracking-[0.2em] hover:brightness-110 active:scale-[0.98] transition-all shadow-2xl shadow-primary/20"
               >
                 Accept Project
+              </button>
+            )}
+            {project.status === 'open' && user?.uid === project.clientId && (
+              <button 
+                onClick={handleRefund}
+                disabled={isSubmitting}
+                className="w-full py-4 bg-error/10 text-error border border-error/20 font-mono text-[11px] font-black uppercase tracking-[0.2em] hover:bg-error/20 active:scale-[0.98] transition-all"
+              >
+                {isSubmitting ? 'Processing...' : 'Refund & Cancel'}
               </button>
             )}
             {project.status !== 'open' && (

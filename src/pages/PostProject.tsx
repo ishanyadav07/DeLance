@@ -27,6 +27,7 @@ import { useFirebase } from '../components/FirebaseProvider';
 import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 import { createJob as createContractJob } from '../services/contractService';
+import { USDC_ADDRESS } from '../services/contractService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 
@@ -52,7 +53,7 @@ export const PostProject = () => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Backend');
   const [budget, setBudget] = useState('');
-  const [currency, setCurrency] = useState('ETH');
+  const [currency, setCurrency] = useState('USDC');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
@@ -150,9 +151,8 @@ export const PostProject = () => {
         return;
       }
 
-      // We need to convert the budget to ETH string for the contract
-      // For now, let's assume the budget input is in ETH if the currency is ETH, 
-      // or just use it as ETH for this demo.
+      // We need to convert the budget to units for the contract (USDC 6 decimals)
+      // The createJob service now handles approval internally if needed
       const contractJobId = await createContractJob(description, budget);
       
       // 2. Create the job document in Firestore
@@ -173,7 +173,8 @@ export const PostProject = () => {
         status: 'open',
         createdAt: serverTimestamp(),
         tags,
-        bidCount: 0
+        bidCount: 0,
+        token: currency === 'USDC' ? USDC_ADDRESS : null
       };
       
       try {
@@ -407,10 +408,9 @@ export const PostProject = () => {
                                 onChange={(e) => setCurrency(e.target.value)}
                                 className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-mono font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
                               >
+                                <option>USDC</option>
+                                <option>USDT</option>
                                 <option>ETH</option>
-                                <option>USD</option>
-                                <option>EUR</option>
-                                <option>GBP</option>
                               </select>
                             </div>
                           </div>

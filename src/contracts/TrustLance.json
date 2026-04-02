@@ -13,9 +13,19 @@
     "inputs": [
       { "indexed": false, "internalType": "uint256", "name": "jobId", "type": "uint256" },
       { "indexed": false, "internalType": "address", "name": "client", "type": "address" },
-      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "token", "type": "address" }
     ],
     "name": "JobCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "jobId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "Refunded",
     "type": "event"
   },
   {
@@ -65,11 +75,22 @@
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "description", "type": "string" }
+      { "internalType": "string", "name": "description", "type": "string" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "address", "name": "token", "type": "address" }
     ],
     "name": "createJob",
     "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "jobId", "type": "uint256" }
+    ],
+    "name": "refund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

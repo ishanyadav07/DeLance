@@ -4,6 +4,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { FirebaseProvider } from './components/FirebaseProvider';
 import { Web3Provider } from './components/Web3Provider';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { BlockchainListener } from './components/BlockchainListener';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -27,6 +28,7 @@ export default function App() {
     <ErrorBoundary>
       <FirebaseProvider>
         <Web3Provider>
+          <BlockchainListener />
           <Router>
             <MainLayout>
               <Suspense fallback={<PageLoader />}>
