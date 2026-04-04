@@ -4,7 +4,17 @@ import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/fire
 import { db } from '../firebase';
 import TrustLanceABI from '../contracts/TrustLance.json';
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS ? ethers.getAddress(import.meta.env.VITE_CONTRACT_ADDRESS.trim().toLowerCase()) : null;
+const getSafeAddress = (address: string | undefined) => {
+  if (!address) return null;
+  try {
+    return ethers.getAddress(address.trim().toLowerCase());
+  } catch (e) {
+    console.error('Invalid address format:', address);
+    return null;
+  }
+};
+
+const CONTRACT_ADDRESS = getSafeAddress(import.meta.env.VITE_CONTRACT_ADDRESS);
 
 export const BlockchainListener: React.FC = () => {
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, ShieldCheck, Clock, DollarSign, ArrowRight, Loader2, Zap } from 'lucide-react';
@@ -40,15 +40,13 @@ export const Marketplace = () => {
     return () => unsubscribe();
   }, []);
 
-  const filteredJobs = React.useMemo(() => {
-    return firestoreJobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           job.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           job.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = activeCategory === 'All' || job.category === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [firestoreJobs, searchQuery, activeCategory]);
+  const filteredJobs = firestoreJobs.filter(job => {
+    const matchesSearch = job.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         job.desc?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         job.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = activeCategory === 'All' || job.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="max-w-7xl 2xl:max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">

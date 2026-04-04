@@ -21,7 +21,7 @@ interface JobCardProps {
   index: number;
 }
 
-export const JobCard: React.FC<JobCardProps> = React.memo(({ job, index }) => {
+export const JobCard: React.FC<JobCardProps> = ({ job, index }) => {
   return (
     <motion.div
       layout
@@ -106,4 +106,4 @@ export const JobCard: React.FC<JobCardProps> = React.memo(({ job, index }) => {
       </div>
     </motion.div>
   );
-});
+};

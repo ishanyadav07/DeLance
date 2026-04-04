@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { ethers } from 'ethers';
 
 interface Web3ContextType {
@@ -29,7 +29,7 @@ interface Props {
   children: ReactNode;
 }
 
-export const Web3Provider: React.FC<Props> = ({ children }) => {
+export const Web3Provider = ({ children }: Props) => {
   const [account, setAccount] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);

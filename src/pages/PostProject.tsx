@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Upload, 
@@ -17,7 +17,8 @@ import {
   Info,
   Loader2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  SplitSquareHorizontal
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
@@ -58,13 +59,13 @@ export const PostProject = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: '1', title: 'Initial Draft & Architecture', amount: 30, description: 'Delivery of technical specifications and initial backend structure.' }
+    { id: '1', title: 'Initial Draft & Architecture', amount: 100, description: 'Delivery of technical specifications and initial backend structure.' }
   ]);
 
   const steps: { id: Step; label: string; icon: any }[] = [
     { id: 'basics', label: 'Basics', icon: Layers },
     { id: 'details', label: 'Details', icon: FileText },
-    { id: 'milestones', label: 'Automated Escrow', icon: Target },
+    { id: 'milestones', label: 'Milestones', icon: Target },
     { id: 'review', label: 'Review', icon: ShieldCheck },
   ];
 
@@ -84,7 +85,9 @@ export const PostProject = () => {
 
   const addMilestone = () => {
     const newId = (milestones.length + 1).toString();
-    setMilestones([...milestones, { id: newId, title: '', amount: 0, description: '' }]);
+    const currentTotal = milestones.reduce((acc, m) => acc + m.amount, 0);
+    const remaining = Math.max(0, 100 - currentTotal);
+    setMilestones([...milestones, { id: newId, title: '', amount: remaining, description: '' }]);
   };
 
   const removeMilestone = (id: string) => {
@@ -97,6 +100,72 @@ export const PostProject = () => {
     setMilestones(milestones.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
+  const splitEvenly = () => {
+    const count = milestones.length;
+    if (count === 0) return;
+    const baseAmount = Math.floor(100 / count);
+    const remainder = 100 % count;
+    
+    setMilestones(milestones.map((m, idx) => ({
+      ...m,
+      amount: idx === 0 ? baseAmount + remainder : baseAmount
+    })));
+  };
+
+  const validateStep = (step: Step): boolean => {
+    setError(null);
+    if (step === 'basics') {
+      if (!title.trim()) {
+        setError('Project title is required.');
+        return false;
+      }
+      const parsedBudget = parseFloat(budget);
+      if (isNaN(parsedBudget) || parsedBudget <= 0) {
+        setError('Please enter a valid budget amount greater than 0.');
+        return false;
+      }
+      return true;
+    }
+    if (step === 'details') {
+      if (!description.trim() || description.length < 20) {
+        setError('Please provide a detailed description (at least 20 characters).');
+        return false;
+      }
+      return true;
+    }
+    if (step === 'milestones') {
+      const totalPayout = milestones.reduce((acc, m) => acc + m.amount, 0);
+      if (totalPayout !== 100) {
+        setError(`Total milestone payout must equal 100%. Current total: ${totalPayout}%`);
+        return false;
+      }
+      const emptyMilestoneTitle = milestones.find(m => !m.title.trim());
+      if (emptyMilestoneTitle) {
+        setError('Please provide a title for all milestones.');
+        return false;
+      }
+      return true;
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      const currentIndex = steps.findIndex(s => s.id === currentStep);
+      if (currentIndex < steps.length - 1) {
+        setCurrentStep(steps[currentIndex + 1].id);
+      }
+    }
+  };
+
+  const prevStep = () => {
+    setError(null);
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1].id);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -104,46 +173,13 @@ export const PostProject = () => {
       return;
     }
 
-    // Basic validation
-    if (!title.trim() || !budget || !description.trim()) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-
-    const totalPayout = milestones.reduce((acc, m) => acc + m.amount, 0);
-    if (totalPayout !== 100) {
-      setError(`Total milestone payout must equal 100%. Current total: ${totalPayout}%`);
-      return;
-    }
-
-    // Milestone title validation
-    const emptyMilestoneTitle = milestones.find(m => !m.title.trim());
-    if (emptyMilestoneTitle) {
-      setError('Please provide a title for all milestones.');
-      return;
-    }
+    if (!validateStep('review')) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // 1. Call Smart Contract first
       const parsedBudget = parseFloat(budget);
-      if (isNaN(parsedBudget) || parsedBudget <= 0) {
-        setError('Please enter a valid budget amount.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Check balance if currency is ETH
-      if (currency === 'ETH' && balance) {
-        const currentBalance = parseFloat(balance);
-        if (currentBalance < parsedBudget) {
-          setError(`Insufficient balance. You have ${currentBalance} ETH but need ${parsedBudget} ETH plus gas fees.`);
-          setIsSubmitting(false);
-          return;
-        }
-      }
 
       if (!isCorrectNetwork) {
         setError('Please switch to the Sepolia Testnet in your wallet.');
@@ -151,11 +187,12 @@ export const PostProject = () => {
         return;
       }
 
-      // We need to convert the budget to units for the contract (USDC 6 decimals)
-      // The createJob service now handles approval internally if needed
       const contractJobId = await createContractJob(description, budget);
       
-      // 2. Create the job document in Firestore
+      if (contractJobId === null) {
+        throw new Error('Failed to retrieve Job ID from the smart contract transaction.');
+      }
+
       const batch = writeBatch(db);
       const jobRef = doc(collection(db, 'jobs'));
 
@@ -180,10 +217,8 @@ export const PostProject = () => {
       try {
         batch.set(jobRef, jobData);
 
-        // 2. Create milestones subcollection
         milestones.forEach((m) => {
           const milestoneRef = doc(collection(db, `jobs/${jobRef.id}/milestones`));
-          // Calculate actual amount from percentage
           const actualAmount = (m.amount / 100) * parsedBudget;
           
           batch.set(milestoneRef, {
@@ -191,7 +226,7 @@ export const PostProject = () => {
             jobId: jobRef.id,
             title: m.title,
             amount: actualAmount,
-            percentage: m.amount, // Keep percentage for reference
+            percentage: m.amount,
             description: m.description,
             status: 'pending'
           });
@@ -206,28 +241,39 @@ export const PostProject = () => {
     } catch (err: any) {
       console.error('Error posting project:', err);
       let errorMessage = err.message || 'Failed to post project. Please try again.';
+      
       if (errorMessage.includes('insufficient funds')) {
         errorMessage = 'Insufficient funds in your wallet. Please ensure you have enough Sepolia ETH to cover the budget and gas fees. You can get free Sepolia ETH from a faucet.';
       } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
         errorMessage = 'Transaction was rejected in your wallet.';
+      } else if (errorMessage.includes('NOT a smart contract')) {
+        // Add specific guidance for the USDC contract error
+        errorMessage = (
+          <div className="space-y-3">
+            <p className="font-bold">USDC Contract Error</p>
+            <p>{errorMessage}</p>
+            <div className="p-3 bg-surface-container rounded-lg border border-white/5 space-y-2">
+              <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Quick Fix: Deploy Mock USDC</p>
+              <p className="text-[10px] leading-relaxed">If you are on a private network or the official USDC is missing, you must deploy your own Mock USDC in Remix.</p>
+              <div className="flex flex-col gap-2">
+                <a 
+                  href="https://remix.ethereum.org" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-tertiary hover:underline flex items-center gap-1 font-bold"
+                >
+                  1. Open Remix IDE <ExternalLink size={10} />
+                </a>
+                <p className="text-[10px]">2. Deploy a simple ERC20 with 6 decimals.</p>
+                <p className="text-[10px]">3. Update VITE_USDC_ADDRESS in AI Studio Secrets.</p>
+              </div>
+            </div>
+          </div>
+        ) as any;
       }
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const nextStep = () => {
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1].id);
-    }
-  };
-
-  const prevStep = () => {
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1].id);
     }
   };
 
@@ -319,9 +365,9 @@ export const PostProject = () => {
                   <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex flex-col gap-2 text-destructive text-sm mb-6">
                     <div className="flex items-center gap-3">
                       <AlertCircle size={18} />
-                      <p>{error}</p>
+                      <div>{error}</div>
                     </div>
-                    {error.includes('Insufficient funds') && (
+                    {typeof error === 'string' && error.includes('Insufficient funds') && (
                       <div className="ml-7 flex flex-wrap gap-2">
                         <a 
                           href="https://sepolia-faucet.pk910.de/" 
@@ -379,6 +425,8 @@ export const PostProject = () => {
                                 <option>Design</option>
                                 <option>Security Audit</option>
                                 <option>Architecture</option>
+                                <option>Smart Contracts</option>
+                                <option>Full Stack</option>
                               </select>
                               <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none text-outline" />
                             </div>
@@ -386,11 +434,6 @@ export const PostProject = () => {
                           <div className="space-y-2">
                             <div className="flex justify-between items-center">
                               <label className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Budget</label>
-                              {account && balance && (
-                                <span className="text-[10px] font-mono text-outline/60">
-                                  Balance: <span className="text-primary/80">{parseFloat(balance).toFixed(4)} ETH</span>
-                                </span>
-                              )}
                             </div>
                             <div className="flex gap-2">
                               <div className="relative flex-1">
@@ -398,6 +441,8 @@ export const PostProject = () => {
                                   value={budget}
                                   onChange={(e) => setBudget(e.target.value)}
                                   required 
+                                  min="0.01"
+                                  step="0.01"
                                   className="w-full bg-surface-container-highest border border-white/5 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary/30 font-mono text-xl font-bold tracking-tighter" 
                                   placeholder="0.00" 
                                   type="number" 
@@ -409,8 +454,6 @@ export const PostProject = () => {
                                 className="bg-surface-container-highest border border-white/5 rounded-xl px-4 font-mono font-bold text-primary focus:ring-2 focus:ring-primary/30 text-sm"
                               >
                                 <option>USDC</option>
-                                <option>USDT</option>
-                                <option>ETH</option>
                               </select>
                             </div>
                           </div>
@@ -484,13 +527,24 @@ export const PostProject = () => {
                           <h3 className="font-headline text-lg font-bold">Automated Escrow Milestones</h3>
                           <p className="text-[10px] text-outline uppercase tracking-wider">Divide your project into phases.</p>
                         </div>
-                        <button 
-                          type="button" 
-                          onClick={addMilestone}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[10px] font-bold hover:bg-primary/20 transition-all"
-                        >
-                          <Plus size={12} /> Add Milestone
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {milestones.length > 1 && (
+                            <button 
+                              type="button" 
+                              onClick={splitEvenly}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-tertiary/10 text-tertiary rounded-lg text-[10px] font-bold hover:bg-tertiary/20 transition-all"
+                            >
+                              <SplitSquareHorizontal size={12} /> Split Evenly
+                            </button>
+                          )}
+                          <button 
+                            type="button" 
+                            onClick={addMilestone}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[10px] font-bold hover:bg-primary/20 transition-all"
+                          >
+                            <Plus size={12} /> Add Milestone
+                          </button>
+                        </div>
                       </div>
 
                       <div className="space-y-3">
@@ -519,6 +573,11 @@ export const PostProject = () => {
                                       />
                                       <span className="text-outline text-xs">%</span>
                                     </div>
+                                    {budget && !isNaN(parseFloat(budget)) && (
+                                      <p className="text-[10px] font-mono text-outline/60">
+                                        ≈ {((m.amount / 100) * parseFloat(budget)).toFixed(2)} {currency}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="space-y-1.5">
@@ -590,10 +649,16 @@ export const PostProject = () => {
                               {milestones.map((m, i) => (
                                 <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
                                   <div className="flex items-center gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold text-outline">{i + 1}</span>
-                                    <span className="font-bold text-xs">{m.title || 'Untitled Milestone'}</span>
+                                    <span className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold text-outline shrink-0">{i + 1}</span>
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-xs">{m.title || 'Untitled Milestone'}</span>
+                                      <span className="text-[10px] text-on-surface-variant line-clamp-1">{m.description || 'No description'}</span>
+                                    </div>
                                   </div>
-                                  <span className="font-mono text-xs text-primary font-bold">{m.amount}%</span>
+                                  <div className="text-right shrink-0">
+                                    <div className="font-mono text-xs text-primary font-bold">{m.amount}%</div>
+                                    <div className="font-mono text-[10px] text-outline">≈ {((m.amount / 100) * parseFloat(budget || '0')).toFixed(2)} {currency}</div>
+                                  </div>
                                 </div>
                               ))}
                             </div>
