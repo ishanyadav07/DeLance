@@ -6,16 +6,37 @@ import { cn } from '@/src/utils';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
+import { useWeb3 } from '../components/Web3Provider';
 import { GlassCard } from '../components/ui/GlassCard';
+import { getUserTransactions, subscribeToUserTransactions, Transaction } from '../services/transactionService';
 
 export const Dashboard = () => {
-  const { user, loading: authLoading, isAdmin } = useFirebase();
+  const { user, loading: authLoading, isAdmin, profileData } = useFirebase();
+  const { balance, usdcBalance } = useWeb3();
   const navigate = useNavigate();
   const [myJobs, setMyJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [myBids, setMyBids] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'client' | 'freelancer'>('client');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  const calculateCompletion = () => {
+    if (!profileData) return 0;
+    const fields = [
+      profileData.displayName,
+      profileData.bio,
+      profileData.title,
+      profileData.location,
+      profileData.skills?.length > 0,
+      profileData.website || profileData.github || profileData.linkedin,
+      profileData.hourlyRate > 0,
+    ];
+    const completed = fields.filter(Boolean).length;
+    return Math.round((completed / fields.length) * 100);
+  };
+
+  const completion = calculateCompletion();
 
   useEffect(() => {
     if (!user) return;
@@ -45,9 +66,15 @@ export const Dashboard = () => {
       }
     });
 
+    // Subscribe to transactions
+    const unsubscribeTransactions = subscribeToUserTransactions(user.uid, (txs) => {
+      setTransactions(txs);
+    });
+
     return () => {
       unsubscribeJobs();
       unsubscribeFreelancerJobs();
+      unsubscribeTransactions();
     };
   }, [user, isAdmin]);
 
@@ -77,18 +104,18 @@ export const Dashboard = () => {
 
   const stats = [
     { 
+      label: 'Wallet Balance', 
+      value: `${usdcBalance ? parseFloat(usdcBalance).toFixed(2) : '0.00'} USDC`, 
+      change: 'Available in MetaMask', 
+      icon: ShieldCheck, 
+      color: 'text-success' 
+    },
+    { 
       label: isAdmin ? 'Platform Volume' : 'Total Escrow', 
       value: `${totalBudget.toLocaleString()} ${myJobs[0]?.currency || 'USD'}`, 
       change: `${myJobs.length} total projects`, 
       icon: Lock, 
       color: 'text-primary' 
-    },
-    { 
-      label: 'Open Bids', 
-      value: activeJobsCount.toString().padStart(2, '0'), 
-      change: 'Awaiting selection', 
-      icon: Rocket, 
-      color: 'text-secondary' 
     },
     { 
       label: 'Active Work', 
@@ -124,6 +151,34 @@ export const Dashboard = () => {
           </Link>
         </div>
       </header>
+
+      {completion < 100 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12"
+        >
+          <GlassCard className="p-6 bg-primary/5 border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                <User size={24} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-headline font-bold text-lg">Complete your professional profile</h3>
+                <p className="text-xs text-on-surface-variant">Your profile is {completion}% complete. A full profile increases your visibility to potential clients by 3x.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-6 w-full md:w-auto">
+              <div className="flex-1 md:w-48 h-2 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full bg-primary" style={{ width: `${completion}%` }}></div>
+              </div>
+              <Link to="/profile" className="px-6 py-3 bg-primary text-surface rounded-lg font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
+                Complete Now
+              </Link>
+            </div>
+          </GlassCard>
+        </motion.div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
@@ -206,38 +261,63 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Pulse Feed */}
-        <div className="lg:col-span-4 space-y-8">
-          <h2 className="font-headline text-2xl font-bold uppercase tracking-tight border-b border-white/5 pb-4">Pulse</h2>
-          <div className="space-y-6">
-            {myJobs.slice(0, 4).map((job, i) => (
-              <div key={i} className="flex gap-4 group">
-                <div className="w-1 h-12 bg-linear-to-b from-primary to-transparent rounded-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
-                <div className="space-y-1">
-                  <p className="font-mono text-[8px] text-outline uppercase tracking-widest">
-                    {job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recent'}
-                  </p>
-                  <p className="text-xs font-sans leading-relaxed">
-                    <span className="font-bold text-primary uppercase text-[10px] tracking-widest mr-1">Posted:</span>
-                    {job.title} is live and synced.
-                  </p>
+        {/* Pulse Feed & Transaction History */}
+        <div className="lg:col-span-4 space-y-12">
+          <div className="space-y-8">
+            <h2 className="font-headline text-2xl font-bold uppercase tracking-tight border-b border-white/5 pb-4">Pulse</h2>
+            <div className="space-y-6">
+              {myJobs.slice(0, 3).map((job, i) => (
+                <div key={i} className="flex gap-4 group">
+                  <div className="w-1 h-12 bg-linear-to-b from-primary to-transparent rounded-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="space-y-1">
+                    <p className="font-mono text-[8px] text-outline uppercase tracking-widest">
+                      {job.createdAt?.toDate ? job.createdAt.toDate().toLocaleDateString() : 'Recent'}
+                    </p>
+                    <p className="text-xs font-sans leading-relaxed">
+                      <span className="font-bold text-primary uppercase text-[10px] tracking-widest mr-1">Posted:</span>
+                      {job.title} is live and synced.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <div className="flex gap-4 group">
-              <div className="w-1 h-12 bg-linear-to-b from-tertiary to-transparent rounded-full opacity-30 group-hover:opacity-100 transition-opacity"></div>
-              <div className="space-y-1">
-                <p className="font-mono text-[8px] text-outline uppercase tracking-widest">System</p>
-                <p className="text-xs font-sans leading-relaxed">
-                  <span className="font-bold text-tertiary uppercase text-[10px] tracking-widest mr-1">Ready:</span>
-                  Automated Escrow initialized for all new postings.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
-          <button className="w-full py-4 rounded-xl border border-white/5 text-[10px] font-bold text-on-surface-variant hover:bg-white/5 transition-all uppercase tracking-widest">
-            Audit Full History
-          </button>
+
+          <div className="space-y-8">
+            <h2 className="font-headline text-2xl font-bold uppercase tracking-tight border-b border-white/5 pb-4">Transaction History</h2>
+            <div className="space-y-4">
+              {transactions.length > 0 ? transactions.slice(0, 5).map((tx, i) => (
+                <div key={tx.id || i} className="p-4 bg-surface-container-low/30 border border-white/5 rounded-xl space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-mono text-outline uppercase tracking-widest">
+                        {tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString() : 'Pending'}
+                      </p>
+                      <p className="text-xs font-bold uppercase tracking-tight">
+                        {tx.type.replace('_', ' ')}
+                      </p>
+                    </div>
+                    <p className={cn(
+                      "font-mono text-sm font-bold",
+                      tx.fromId === user.uid ? "text-error" : "text-success"
+                    )}>
+                      {tx.fromId === user.uid ? '-' : '+'}{tx.amount} <span className="text-[10px]">{tx.currency}</span>
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-on-surface-variant font-sans truncate opacity-60">
+                    Job ID: {tx.jobId}
+                  </p>
+                </div>
+              )) : (
+                <div className="py-8 text-center border border-dashed border-white/10 rounded-xl">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">No transactions found</p>
+                </div>
+              )}
+              <button className="w-full py-4 rounded-xl border border-white/5 text-[10px] font-bold text-on-surface-variant hover:bg-white/5 transition-all uppercase tracking-widest">
+                Audit Full History
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

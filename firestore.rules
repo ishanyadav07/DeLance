@@ -20,6 +20,14 @@ service cloud.firestore {
     //   - completedProjects: number (optional)
     //   - skills: list (optional)
     //   - walletAddress: string (optional)
+    //   - title: string (optional)
+    //   - location: string (optional)
+    //   - website: string (optional, url format)
+    //   - github: string (optional, url format)
+    //   - twitter: string (optional, url format)
+    //   - linkedin: string (optional, url format)
+    //   - hourlyRate: number (optional)
+    //   - experienceLevel: string (optional, enum: ['Entry', 'Intermediate', 'Expert'])
     //
     // Collection: jobs
     // Document ID: jobId
@@ -164,7 +172,7 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'reputation', 'bio', 'createdAt', 'updatedAt', 'completedProjects', 'skills', 'walletAddress']) &&
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'reputation', 'bio', 'createdAt', 'updatedAt', 'completedProjects', 'skills', 'walletAddress', 'title', 'location', 'website', 'github', 'twitter', 'linkedin', 'hourlyRate', 'experienceLevel']) &&
              (!('uid' in data) || (data.uid is string && data.uid.size() > 0)) &&
              (!('email' in data) || isValidEmail(data.email)) &&
              (!('role' in data) || (data.role in ['client', 'freelancer', 'admin'])) &&
@@ -176,7 +184,15 @@ service cloud.firestore {
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('completedProjects' in data) || data.completedProjects is number) &&
              (!('skills' in data) || data.skills is list) &&
-             (!('walletAddress' in data) || data.walletAddress is string);
+             (!('walletAddress' in data) || data.walletAddress is string) &&
+             (!('title' in data) || data.title is string) &&
+             (!('location' in data) || data.location is string) &&
+             (!('website' in data) || isValidUrl(data.website) || data.website == "") &&
+             (!('github' in data) || isValidUrl(data.github) || data.github == "") &&
+             (!('twitter' in data) || isValidUrl(data.twitter) || data.twitter == "") &&
+             (!('linkedin' in data) || isValidUrl(data.linkedin) || data.linkedin == "") &&
+             (!('hourlyRate' in data) || data.hourlyRate is number) &&
+             (!('experienceLevel' in data) || (data.experienceLevel in ['Entry', 'Intermediate', 'Expert']));
     }
 
     function isValidJob(data) {
@@ -380,7 +396,7 @@ service cloud.firestore {
 
     match /transactions/{transactionId} {
       allow read: if isAuthenticated() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid || isAdmin());
-      allow create: if isAdmin();
+      allow create: if isAuthenticated() && (request.resource.data.fromId == request.auth.uid || isAdmin()) && isValidTransaction(request.resource.data);
       allow update: if false;
       allow delete: if false;
     }

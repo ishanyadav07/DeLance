@@ -29,6 +29,7 @@ import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 import { createJob as createContractJob } from '../services/contractService';
 import { USDC_ADDRESS } from '../services/contractService';
+import { recordTransaction, TransactionType, TransactionStatus } from '../services/transactionService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 
@@ -44,7 +45,7 @@ interface Milestone {
 export const PostProject = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useFirebase();
-  const { account, balance, isCorrectNetwork } = useWeb3();
+  const { account, balance, usdcBalance, isCorrectNetwork, connectWallet } = useWeb3();
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -233,6 +234,18 @@ export const PostProject = () => {
         });
 
         await batch.commit();
+
+        // 3. Record Transaction in Firestore
+        await recordTransaction({
+          jobId: jobRef.id,
+          fromId: user.uid,
+          toId: 'escrow', // Representing platform escrow
+          amount: parsedBudget,
+          currency: currency,
+          status: TransactionStatus.COMPLETED,
+          type: TransactionType.ESCROW_DEPOSIT,
+          txHash: '' // We don't have the hash easily here unless we return it from createContractJob
+        });
       } catch (dbErr: any) {
         handleFirestoreError(dbErr, OperationType.WRITE, 'jobs');
       }
@@ -726,6 +739,56 @@ export const PostProject = () => {
 
         {/* Sidebar Info */}
         <div className="lg:col-span-4 space-y-5">
+          {/* Wallet Balance Card */}
+          <GlassCard className="p-6 md:p-7 space-y-5 border border-white/5 shadow-lg">
+            <div className="flex justify-between items-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Coins size={20} />
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-success/10 text-success rounded-full text-[10px] font-bold uppercase tracking-widest">
+                <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                Live
+              </div>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant font-bold">Available Balance</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-headline font-extrabold text-primary">
+                  {usdcBalance ? parseFloat(usdcBalance).toFixed(2) : '0.00'}
+                </span>
+                <span className="text-sm font-bold text-on-surface-variant">USDC</span>
+              </div>
+            </div>
+            
+            {!account ? (
+              <button 
+                onClick={connectWallet}
+                className="w-full py-3 bg-primary text-surface rounded-xl font-bold uppercase tracking-widest text-[10px] hover:scale-[1.02] transition-transform active:scale-95"
+              >
+                Connect Wallet
+              </button>
+            ) : (
+              <div className="p-3 bg-surface-container rounded-xl border border-white/5 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-label uppercase tracking-widest text-outline">Connected Address</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-success" />
+                </div>
+                <p className="text-[10px] font-mono text-on-surface-variant truncate">
+                  {account}
+                </p>
+              </div>
+            )}
+
+            {budget && parseFloat(budget) > parseFloat(usdcBalance || '0') && (
+              <div className="p-3 bg-error/5 border border-error/10 rounded-xl flex items-start gap-3">
+                <AlertCircle size={14} className="text-error shrink-0 mt-0.5" />
+                <p className="text-[10px] text-error leading-relaxed font-medium">
+                  Insufficient balance for this project budget ({budget} {currency}).
+                </p>
+              </div>
+            )}
+          </GlassCard>
+
           <GlassCard className="p-6 md:p-7 space-y-5 border border-white/5 shadow-lg">
             <div className="w-10 h-10 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary">
               <ShieldCheck size={20} />

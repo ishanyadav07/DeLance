@@ -70,3 +70,18 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .rotate-x-180 {
+    transform: rotateX(180deg);
+  }
+}

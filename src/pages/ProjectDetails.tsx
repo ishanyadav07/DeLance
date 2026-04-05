@@ -22,6 +22,7 @@ import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 import { acceptJob as acceptContractJob, approveWork as approveContractWork, refund as refundContract } from '../services/contractService';
+import { recordTransaction, TransactionType, TransactionStatus } from '../services/transactionService';
 
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
@@ -44,33 +45,32 @@ export const ProjectDetails = () => {
   useEffect(() => {
     if (!id) return;
 
-    const fetchProject = async () => {
-      try {
-        const docRef = doc(db, 'jobs', id);
-        const docSnap = await getDoc(docRef);
+    const projectRef = doc(db, 'jobs', id);
+    const unsubscribeProject = onSnapshot(projectRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setProject({ ...data, id: docSnap.id });
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setProject({ ...data, id: docSnap.id });
-
-          // Fetch client info
+        // Fetch client info (only once or if clientId changes)
+        if (!client || client.uid !== data.clientId) {
           const clientRef = doc(db, 'users', data.clientId);
           const clientSnap = await getDoc(clientRef);
           if (clientSnap.exists()) {
             setClient(clientSnap.data());
           }
-        } else {
-          console.error("No such project!");
         }
-      } catch (error) {
-        console.error("Error fetching project:", error);
-      } finally {
-        setLoading(false);
+      } else {
+        console.error("No such project!");
+        navigate('/marketplace');
       }
-    };
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching project:", error);
+      setLoading(false);
+    });
 
-    fetchProject();
-  }, [id]);
+    return () => unsubscribeProject();
+  }, [id, navigate]);
 
   useEffect(() => {
     if (!id || !user || !project) return;
@@ -217,6 +217,19 @@ export const ProjectDetails = () => {
         if (allApproved) {
           await updateDoc(doc(db, 'jobs', id), { status: 'completed' });
         }
+
+        // 3. Record Transaction in Firestore
+        const milestone = milestones.find(m => m.id === milestoneId);
+        await recordTransaction({
+          jobId: id,
+          milestoneId: milestoneId,
+          fromId: 'escrow',
+          toId: project.freelancerId,
+          amount: milestone?.amount || 0,
+          currency: project.currency || 'USDC',
+          status: TransactionStatus.COMPLETED,
+          type: TransactionType.PAYOUT
+        });
       } catch (dbErr) {
         handleFirestoreError(dbErr, OperationType.UPDATE, `jobs/${id}`);
       }

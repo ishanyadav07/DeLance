@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 interface Web3ContextType {
   account: string | null;
   balance: string | null;
+  usdcBalance: string | null;
   chainId: string | null;
   isCorrectNetwork: boolean;
   connectWallet: () => Promise<void>;
@@ -12,10 +13,13 @@ interface Web3ContextType {
 }
 
 const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
+const USDC_ADDRESS = import.meta.env.VITE_USDC_ADDRESS;
+const ERC20_ABI = ["function balanceOf(address account) public view returns (uint256)", "function decimals() view returns (uint8)"];
 
 const Web3Context = createContext<Web3ContextType>({
   account: null,
   balance: null,
+  usdcBalance: null,
   chainId: null,
   isCorrectNetwork: false,
   connectWallet: async () => {},
@@ -32,6 +36,7 @@ interface Props {
 export const Web3Provider = ({ children }: Props) => {
   const [account, setAccount] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,8 +46,25 @@ export const Web3Provider = ({ children }: Props) => {
     if (!window.ethereum) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // ETH Balance
       const bal = await provider.getBalance(address);
       setBalance(ethers.formatEther(bal));
+
+      // USDC Balance
+      if (USDC_ADDRESS) {
+        try {
+          const usdcContract = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
+          const [rawBalance, decimals] = await Promise.all([
+            usdcContract.balanceOf(address),
+            usdcContract.decimals().catch(() => 6)
+          ]);
+          setUsdcBalance(ethers.formatUnits(rawBalance, decimals));
+        } catch (usdcErr) {
+          console.warn('Error fetching USDC balance:', usdcErr);
+          setUsdcBalance('0.00');
+        }
+      }
     } catch (err) {
       console.error('Error updating balance:', err);
     }
@@ -127,7 +149,7 @@ export const Web3Provider = ({ children }: Props) => {
   }, []);
 
   return (
-    <Web3Context.Provider value={{ account, balance, chainId, isCorrectNetwork, connectWallet, loading, error }}>
+    <Web3Context.Provider value={{ account, balance, usdcBalance, chainId, isCorrectNetwork, connectWallet, loading, error }}>
       {children}
     </Web3Context.Provider>
   );

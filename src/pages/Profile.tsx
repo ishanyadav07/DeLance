@@ -20,33 +20,60 @@ import {
   Pencil,
   Trash2,
   X,
-  Save
+  Save,
+  Linkedin,
+  Globe,
+  Briefcase,
+  DollarSign,
+  Award,
+  AlertCircle,
+  Copy,
+  Share2,
+  Mail,
+  Trophy,
+  Check
 } from 'lucide-react';
 import { cn } from '@/src/utils';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GradientText } from '../components/ui/GradientText';
 import { useFirebase } from '../components/FirebaseProvider';
 import { db } from '../firebase';
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, setDoc, where } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { useWeb3 } from '../components/Web3Provider';
+import { getUserTransactions, subscribeToUserTransactions, Transaction } from '../services/transactionService';
 
 export const Profile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useFirebase();
+  const { balance, usdcBalance } = useWeb3();
   const [profileData, setProfileData] = useState<any>(null);
   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolioItem, setEditingPortfolioItem] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   
   const isOwnProfile = !id || (user && id === user.uid);
   const targetUid = id || user?.uid;
 
   // Form states
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editTitle, setEditTitle] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editSkills, setEditSkills] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editWebsite, setEditWebsite] = useState('');
+  const [editGithub, setEditGithub] = useState('');
+  const [editTwitter, setEditTwitter] = useState('');
+  const [editLinkedin, setEditLinkedin] = useState('');
+  const [editHourlyRate, setEditHourlyRate] = useState('');
+  const [editExperienceLevel, setEditExperienceLevel] = useState('Intermediate');
+  const [editRole, setEditRole] = useState('freelancer');
+
   const [portfolioForm, setPortfolioForm] = useState({
     title: '',
     description: '',
@@ -79,8 +106,18 @@ export const Profile = () => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setProfileData(data);
+          setEditDisplayName(data.displayName || '');
+          setEditTitle(data.title || '');
           setEditBio(data.bio || '');
           setEditSkills(data.skills?.join(', ') || '');
+          setEditLocation(data.location || '');
+          setEditWebsite(data.website || '');
+          setEditGithub(data.github || '');
+          setEditTwitter(data.twitter || '');
+          setEditLinkedin(data.linkedin || '');
+          setEditHourlyRate(data.hourlyRate?.toString() || '');
+          setEditExperienceLevel(data.experienceLevel || 'Intermediate');
+          setEditRole(data.role || 'freelancer');
         }
         await fetchPortfolio(targetUid);
       } catch (error) {
@@ -93,19 +130,42 @@ export const Profile = () => {
     if (!authLoading) {
       fetchProfile();
     }
-  }, [targetUid, authLoading]);
+
+    // Subscribe to transactions if it's the user's own profile
+    let unsubscribeTransactions: (() => void) | undefined;
+    if (isOwnProfile && targetUid) {
+      unsubscribeTransactions = subscribeToUserTransactions(targetUid, (txs) => {
+        setTransactions(txs);
+      });
+    }
+
+    return () => {
+      if (unsubscribeTransactions) unsubscribeTransactions();
+    };
+  }, [targetUid, authLoading, isOwnProfile]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
     try {
       const userRef = doc(db, 'users', user.uid);
       const skillsArray = editSkills.split(',').map(s => s.trim()).filter(s => s !== '');
-      await updateDoc(userRef, {
+      const updatedData = {
+        displayName: editDisplayName,
+        title: editTitle,
         bio: editBio,
         skills: skillsArray,
+        location: editLocation,
+        website: editWebsite,
+        github: editGithub,
+        twitter: editTwitter,
+        linkedin: editLinkedin,
+        hourlyRate: parseFloat(editHourlyRate) || 0,
+        experienceLevel: editExperienceLevel,
+        role: editRole,
         updatedAt: serverTimestamp()
-      });
-      setProfileData({ ...profileData, bio: editBio, skills: skillsArray });
+      };
+      await updateDoc(userRef, updatedData);
+      setProfileData({ ...profileData, ...updatedData });
       setIsEditingProfile(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
@@ -180,21 +240,43 @@ export const Profile = () => {
 
   const freelancer = {
     name: profileData?.displayName || 'Anonymous Freelancer',
+    title: profileData?.title || 'Platform Freelancer',
     handle: targetUid?.slice(0, 6) + '...' + targetUid?.slice(-4),
     bio: profileData?.bio || 'No bio provided yet. Platform freelancer in the making.',
     location: profileData?.location || 'Global Platform',
-    website: profileData?.website || 'delance.platform',
+    website: profileData?.website || '',
+    github: profileData?.github || '',
+    twitter: profileData?.twitter || '',
+    linkedin: profileData?.linkedin || '',
+    hourlyRate: profileData?.hourlyRate || 0,
+    experienceLevel: profileData?.experienceLevel || 'Intermediate',
     joined: profileData?.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently',
     photoURL: profileData?.photoURL || "https://picsum.photos/seed/freelancer/200/200",
     stats: [
-      { label: 'Success Rate', value: profileData?.successRate || '100%', icon: CheckCircle2 },
-      { label: 'Avg. Rating', value: profileData?.rating || '5.0/5', icon: Star },
-      { label: 'Jobs Completed', value: profileData?.completedProjects || '0', icon: ShieldCheck },
-      { label: 'Reputation', value: profileData?.reputation || '0', icon: Cpu },
+      { label: 'Success Rate', value: profileData?.successRate || '100%', icon: CheckCircle2, color: 'text-success' },
+      { label: 'Avg. Rating', value: profileData?.rating || '5.0/5', icon: Star, color: 'text-warning' },
+      { label: 'Jobs Completed', value: profileData?.completedProjects || '0', icon: Trophy, color: 'text-tertiary' },
+      { label: 'Hourly Rate', value: `$${profileData?.hourlyRate || 0}/hr`, icon: DollarSign, color: 'text-primary' },
     ],
-    skills: profileData?.skills || ['Newcomer'],
+    skills: profileData?.skills || [],
     portfolio: portfolioItems
   };
+
+  const calculateCompletion = () => {
+    const fields = [
+      profileData?.displayName,
+      profileData?.title,
+      profileData?.bio,
+      profileData?.skills?.length > 0,
+      profileData?.location,
+      profileData?.hourlyRate > 0,
+      portfolioItems.length > 0
+    ];
+    const filled = fields.filter(Boolean).length;
+    return Math.round((filled / fields.length) * 100);
+  };
+
+  const completion = calculateCompletion();
 
   return (
     <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -225,29 +307,165 @@ export const Profile = () => {
                   </button>
                 )}
               </div>
-              <p className="text-sm font-mono text-primary">{freelancer.handle}</p>
+              <p className="text-sm font-medium text-primary">{freelancer.title}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-mono text-on-surface-variant">{freelancer.handle}</p>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(targetUid || '');
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="text-on-surface-variant hover:text-primary transition-colors"
+                  title="Copy Address"
+                >
+                  {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                </button>
+              </div>
             </div>
 
-            {isEditingProfile ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Bio</label>
-                  <textarea 
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value)}
-                    className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30 min-h-[100px]"
-                    placeholder="Tell clients about yourself..."
+            {isOwnProfile && completion < 100 && !isEditingProfile && (
+              <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-label uppercase tracking-widest text-primary font-bold">Profile Completion</span>
+                  <span className="text-xs font-bold text-primary">{completion}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completion}%` }}
+                    className="h-full bg-primary"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Skills (comma separated)</label>
-                  <input 
-                    type="text"
-                    value={editSkills}
-                    onChange={(e) => setEditSkills(e.target.value)}
-                    className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
-                    placeholder="React, Node.js, UI Design..."
-                  />
+                <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                  Complete your profile to increase your visibility to clients.
+                </p>
+              </div>
+            )}
+
+            {isEditingProfile ? (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Display Name</label>
+                    <input 
+                      type="text"
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                      placeholder="Your Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Professional Title</label>
+                    <input 
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                      placeholder="e.g. Senior Full Stack Developer"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Bio</label>
+                    <textarea 
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30 min-h-[100px]"
+                      placeholder="Tell clients about yourself..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Hourly Rate ($)</label>
+                      <input 
+                        type="number"
+                        value={editHourlyRate}
+                        onChange={(e) => setEditHourlyRate(e.target.value)}
+                        className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                        placeholder="50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Experience</label>
+                      <select 
+                        value={editExperienceLevel}
+                        onChange={(e) => setEditExperienceLevel(e.target.value)}
+                        className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                      >
+                        <option value="Entry">Entry</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Expert">Expert</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Account Role</label>
+                    <select 
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                    >
+                      <option value="freelancer">Freelancer</option>
+                      <option value="client">Client</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Location</label>
+                    <input 
+                      type="text"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Skills (comma separated)</label>
+                    <input 
+                      type="text"
+                      value={editSkills}
+                      onChange={(e) => setEditSkills(e.target.value)}
+                      className="w-full bg-surface-container border border-white/5 rounded-xl p-3 text-sm focus:ring-1 focus:ring-primary/30"
+                      placeholder="React, Node.js, UI Design..."
+                    />
+                  </div>
+                  
+                  <div className="pt-4 space-y-4">
+                    <h4 className="text-[10px] font-label uppercase tracking-widest text-primary font-bold">Social & Links</h4>
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                        <input 
+                          type="text"
+                          value={editWebsite}
+                          onChange={(e) => setEditWebsite(e.target.value)}
+                          className="w-full bg-surface-container border border-white/5 rounded-xl p-3 pl-10 text-sm focus:ring-1 focus:ring-primary/30"
+                          placeholder="Website URL"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Github size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                        <input 
+                          type="text"
+                          value={editGithub}
+                          onChange={(e) => setEditGithub(e.target.value)}
+                          className="w-full bg-surface-container border border-white/5 rounded-xl p-3 pl-10 text-sm focus:ring-1 focus:ring-primary/30"
+                          placeholder="GitHub URL"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Linkedin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                        <input 
+                          type="text"
+                          value={editLinkedin}
+                          onChange={(e) => setEditLinkedin(e.target.value)}
+                          className="w-full bg-surface-container border border-white/5 rounded-xl p-3 pl-10 text-sm focus:ring-1 focus:ring-primary/30"
+                          placeholder="LinkedIn URL"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <button 
                   onClick={handleSaveProfile}
@@ -258,52 +476,163 @@ export const Profile = () => {
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-on-surface-variant leading-relaxed">
-                {freelancer.bio}
-              </p>
+              <div className="space-y-6">
+                <p className="text-sm text-on-surface-variant leading-relaxed">
+                  {freelancer.bio}
+                </p>
+                <div className="space-y-3 text-sm text-on-surface-variant">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} />
+                    <span>{freelancer.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Award size={14} />
+                    <span>{freelancer.experienceLevel} Level</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} />
+                    <span>Joined {freelancer.joined}</span>
+                  </div>
+                </div>
+                
+                {(freelancer.website || freelancer.github || freelancer.linkedin || freelancer.twitter) && (
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    {freelancer.website && (
+                      <a href={freelancer.website} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary">
+                        <Globe size={18} />
+                      </a>
+                    )}
+                    {freelancer.github && (
+                      <a href={freelancer.github} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary">
+                        <Github size={18} />
+                      </a>
+                    )}
+                    {freelancer.linkedin && (
+                      <a href={freelancer.linkedin} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary">
+                        <Linkedin size={18} />
+                      </a>
+                    )}
+                    {freelancer.twitter && (
+                      <a href={freelancer.twitter} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-primary">
+                        <Twitter size={18} />
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-            <div className="space-y-3 text-sm text-on-surface-variant">
-              <div className="flex items-center gap-2">
-                <MapPin size={14} />
-                <span>{freelancer.location}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <LinkIcon size={14} />
-                <span className="text-on-surface">{freelancer.website}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={14} />
-                <span>Joined {freelancer.joined}</span>
-              </div>
-            </div>
-            <div className="flex gap-4 pt-2">
-              <button className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
-                <Twitter size={18} />
-              </button>
-              <button className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
-                <Github size={18} />
-              </button>
-            </div>
 
             {!isOwnProfile && (
+              <div className="flex flex-col gap-3 mt-4">
+                <button 
+                  onClick={() => navigate('/marketplace')}
+                  className="w-full py-3 bg-primary text-on-primary rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                >
+                  <Briefcase size={16} />
+                  Hire Me
+                </button>
+                <button 
+                  className="w-full py-3 bg-surface-container text-on-surface rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors"
+                >
+                  <Mail size={16} />
+                  Contact
+                </button>
+              </div>
+            )}
+
+            {isOwnProfile && !isEditingProfile && (
               <button 
-                onClick={() => navigate('/marketplace')}
-                className="w-full py-3 bg-primary text-on-primary rounded-xl text-sm font-bold flex items-center justify-center gap-2 mt-4"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Profile link copied to clipboard!');
+                }}
+                className="w-full py-3 bg-surface-container text-on-surface rounded-xl text-sm font-bold flex items-center justify-center gap-2 mt-4 hover:bg-surface-container-high transition-colors"
               >
-                Hire Me
+                <Share2 size={16} />
+                Share Profile
               </button>
             )}
           </div>
 
-          <div className="pt-8 border-t border-white/5 space-y-4">
-            <h3 className="font-label text-xs uppercase tracking-widest text-on-surface-variant font-bold">Verification</h3>
-            <div className="p-4 bg-tertiary/5 rounded-xl border border-tertiary/20 flex items-center gap-3">
-              <ShieldCheck className="text-tertiary" size={20} />
-              <div className="text-xs">
-                <p className="font-bold text-tertiary">Verified Freelancer</p>
-                <p className="text-on-surface-variant">Identity verified by platform</p>
+          {/* Sidebar Stats & Verification */}
+          <div className="space-y-8">
+            {isOwnProfile && (
+              <GlassCard className="p-6 rounded-2xl border border-white/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-headline font-bold text-lg uppercase tracking-tight">Wallet</h3>
+                  <ShieldCheck size={18} className="text-success" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-mono text-[10px] text-outline uppercase tracking-widest">Available Balance</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black font-headline tracking-tighter">{usdcBalance ? parseFloat(usdcBalance).toFixed(2) : '0.00'}</span>
+                    <span className="text-primary font-mono font-bold text-sm">USDC</span>
+                  </div>
+                </div>
+                <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl font-mono text-[10px] font-bold uppercase tracking-widest transition-all">
+                  Withdraw Funds
+                </button>
+              </GlassCard>
+            )}
+
+            <GlassCard className="p-6 rounded-2xl border border-white/5 space-y-6">
+              <h3 className="font-headline font-bold text-lg uppercase tracking-tight">Verification</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center text-success">
+                      <ShieldCheck size={16} />
+                    </div>
+                    <span className="text-sm font-medium">Identity</span>
+                  </div>
+                  <Check size={14} className="text-success" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Mail size={16} />
+                    </div>
+                    <span className="text-sm font-medium">Email</span>
+                  </div>
+                  <Check size={14} className="text-success" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                      <Trophy size={16} />
+                    </div>
+                    <span className="text-sm font-medium">Top Rated</span>
+                  </div>
+                  <Check size={14} className="text-success" />
+                </div>
               </div>
-            </div>
+            </GlassCard>
+
+            {isOwnProfile && transactions.length > 0 && (
+              <GlassCard className="p-6 rounded-2xl border border-white/5 space-y-6">
+                <h3 className="font-headline font-bold text-lg uppercase tracking-tight">Recent Activity</h3>
+                <div className="space-y-4">
+                  {transactions.slice(0, 3).map((tx, i) => (
+                    <div key={tx.id || i} className="flex justify-between items-start gap-4">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-tight truncate max-w-[120px]">
+                          {tx.type.replace('_', ' ')}
+                        </p>
+                        <p className="text-[8px] font-mono text-outline uppercase tracking-widest">
+                          {tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString() : 'Pending'}
+                        </p>
+                      </div>
+                      <p className={cn(
+                        "font-mono text-xs font-bold",
+                        tx.fromId === user?.uid ? "text-error" : "text-success"
+                      )}>
+                        {tx.fromId === user?.uid ? '-' : '+'}{tx.amount}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
           </div>
         </div>
 
@@ -312,9 +641,9 @@ export const Profile = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {freelancer.stats.map((stat, i) => (
-              <GlassCard key={i} className="p-6 rounded-2xl border border-white/5 space-y-2">
-                <div className="flex items-center gap-2 text-on-surface-variant">
-                  <stat.icon size={14} />
+              <GlassCard key={i} className="p-6 rounded-2xl border border-white/5 space-y-2 group hover:border-primary/20 transition-all">
+                <div className="flex items-center gap-2 text-on-surface-variant group-hover:text-primary transition-colors">
+                  <stat.icon size={14} className={stat.color} />
                   <span className="text-[10px] font-label uppercase tracking-widest">{stat.label}</span>
                 </div>
                 <p className="text-2xl font-headline font-bold">{stat.value}</p>
@@ -328,13 +657,27 @@ export const Profile = () => {
               <Terminal size={20} className="text-primary" />
               Technical Stack
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {freelancer.skills.map((skill, i) => (
-                <span key={i} className="px-4 py-2 bg-surface-container rounded-full text-xs font-medium border border-white/5">
-                  {skill}
-                </span>
-              ))}
-            </div>
+            {freelancer.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {freelancer.skills.map((skill, i) => (
+                  <span key={i} className="px-4 py-2 bg-surface-container rounded-full text-xs font-medium border border-white/5">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 border border-dashed border-white/10 rounded-2xl text-center">
+                <p className="text-sm text-on-surface-variant">No skills listed yet.</p>
+                {isOwnProfile && (
+                  <button 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="mt-4 text-xs text-primary font-bold hover:underline"
+                  >
+                    Add Skills
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Portfolio */}

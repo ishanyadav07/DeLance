@@ -15,8 +15,9 @@ export const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
   const { user, loading, isAdmin } = useFirebase();
-  const { account: walletAddress, connectWallet, loading: isConnectingWallet, isCorrectNetwork } = useWeb3();
+  const { account: walletAddress, balance, connectWallet, loading: isConnectingWallet, isCorrectNetwork } = useWeb3();
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const showSidebar = location.pathname !== '/';
@@ -112,28 +113,52 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Web3 Wallet Connect Button */}
-          {walletAddress ? (
-            <div className={cn(
-              "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border text-xs font-mono",
-              isCorrectNetwork ? "border-primary/30 text-primary" : "border-error/30 text-error"
-            )}>
-              <div className={cn(
-                "w-2 h-2 rounded-full animate-pulse",
-                isCorrectNetwork ? "bg-primary" : "bg-error"
-              )}></div>
-              {isCorrectNetwork ? formatAddress(walletAddress) : 'Wrong Network'}
-            </div>
-          ) : (
-            <button 
-              onClick={connectWallet}
-              disabled={isConnectingWallet}
-              className="hidden md:flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 text-on-surface px-4 py-1.5 rounded-full font-label font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50"
-            >
-              <Wallet size={14} className="text-primary" />
-              {isConnectingWallet ? 'Connecting...' : 'Connect Wallet'}
-            </button>
-          )}
+          {/* Web3 Wallet Connect Button - Flipped */}
+          <div className="hidden md:block perspective-1000">
+            {!walletAddress ? (
+              <button 
+                onClick={connectWallet}
+                disabled={isConnectingWallet}
+                className="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 text-on-surface px-4 py-1.5 rounded-full font-label font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50"
+              >
+                <Wallet size={14} className="text-primary" />
+                {isConnectingWallet ? 'Connecting...' : 'Connect Wallet'}
+              </button>
+            ) : (
+              <div 
+                className="relative w-36 h-8 cursor-pointer"
+                onClick={() => setIsFlipped(!isFlipped)}
+              >
+                <motion.div
+                  className="w-full h-full relative preserve-3d"
+                  initial={false}
+                  animate={{ rotateX: isFlipped ? 180 : 0 }}
+                  transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+                >
+                  {/* Front: Address */}
+                  <div className={cn(
+                    "absolute inset-0 backface-hidden flex items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border text-[10px] font-mono",
+                    isCorrectNetwork ? "border-primary/30 text-primary" : "border-error/30 text-error"
+                  )}>
+                    <div className={cn(
+                      "w-1.5 h-1.5 rounded-full animate-pulse",
+                      isCorrectNetwork ? "bg-primary" : "bg-error"
+                    )}></div>
+                    {isCorrectNetwork ? formatAddress(walletAddress) : 'Wrong Network'}
+                  </div>
+
+                  {/* Back: Balance */}
+                  <div className={cn(
+                    "absolute inset-0 backface-hidden flex items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border text-[10px] font-mono rotate-x-180",
+                    isCorrectNetwork ? "border-primary/30 text-primary" : "border-error/30 text-error"
+                  )}>
+                    <Wallet size={12} />
+                    {balance ? `${parseFloat(balance).toFixed(4)} ETH` : '0.0000 ETH'}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </div>
 
           {user ? (
             <>
@@ -314,6 +339,64 @@ export const Navbar = () => {
               >
                 Dashboard
               </Link>
+
+              {/* Mobile Wallet Button */}
+              <div className="pt-4 border-t border-white/5">
+                {!walletAddress ? (
+                  <button 
+                    onClick={() => {
+                      connectWallet();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    disabled={isConnectingWallet}
+                    className="w-full flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest border border-white/10 text-on-surface py-4 rounded-xl font-bold transition-all disabled:opacity-50"
+                  >
+                    <Wallet size={20} className="text-primary" />
+                    {isConnectingWallet ? 'Connecting...' : 'Connect Wallet'}
+                  </button>
+                ) : (
+                  <div 
+                    className="relative w-full h-14 cursor-pointer perspective-1000"
+                    onClick={() => setIsFlipped(!isFlipped)}
+                  >
+                    <motion.div
+                      className="w-full h-full relative preserve-3d"
+                      initial={false}
+                      animate={{ rotateX: isFlipped ? 180 : 0 }}
+                      transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+                    >
+                      {/* Front: Address */}
+                      <div className={cn(
+                        "absolute inset-0 backface-hidden flex items-center justify-between p-4 bg-surface-container-high border rounded-xl",
+                        isCorrectNetwork ? "border-primary/20" : "border-error/20"
+                      )}>
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full animate-pulse",
+                            isCorrectNetwork ? "bg-primary" : "bg-error"
+                          )}></div>
+                          <span className="font-mono text-sm">
+                            {isCorrectNetwork ? formatAddress(walletAddress) : 'Wrong Network'}
+                          </span>
+                        </div>
+                        <Wallet size={16} className="text-on-surface-variant" />
+                      </div>
+
+                      {/* Back: Balance */}
+                      <div className={cn(
+                        "absolute inset-0 backface-hidden flex items-center justify-between p-4 bg-surface-container-high border rounded-xl rotate-x-180",
+                        isCorrectNetwork ? "border-primary/20" : "border-error/20"
+                      )}>
+                        <span className="font-mono text-sm font-bold text-primary">Balance</span>
+                        <div className="text-primary font-mono text-sm font-bold">
+                          {balance ? `${parseFloat(balance).toFixed(4)} ETH` : '0.0000 ETH'}
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </div>
+
               {user && (
                 <>
                   <Link 
