@@ -27,6 +27,7 @@ import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { useWeb3 } from '../components/Web3Provider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { Web3ErrorDisplay } from '../utils/web3Errors';
 import { createJob as createContractJob } from '../services/contractService';
 import { USDC_ADDRESS } from '../services/contractService';
 import { recordTransaction, TransactionType, TransactionStatus } from '../services/transactionService';
@@ -215,27 +216,31 @@ export const PostProject = () => {
         token: currency === 'USDC' ? USDC_ADDRESS : null
       };
       
-      try {
-        batch.set(jobRef, jobData);
+      batch.set(jobRef, jobData);
 
-        milestones.forEach((m) => {
-          const milestoneRef = doc(collection(db, `jobs/${jobRef.id}/milestones`));
-          const actualAmount = (m.amount / 100) * parsedBudget;
-          
-          batch.set(milestoneRef, {
-            id: milestoneRef.id,
-            jobId: jobRef.id,
-            title: m.title,
-            amount: actualAmount,
-            percentage: m.amount,
-            description: m.description,
-            status: 'pending'
-          });
+      milestones.forEach((m) => {
+        const milestoneRef = doc(collection(db, `jobs/${jobRef.id}/milestones`));
+        const actualAmount = (m.amount / 100) * parsedBudget;
+        
+        batch.set(milestoneRef, {
+          id: milestoneRef.id,
+          jobId: jobRef.id,
+          title: m.title,
+          amount: actualAmount,
+          percentage: m.amount,
+          description: m.description,
+          status: 'pending'
         });
+      });
 
+      try {
         await batch.commit();
+      } catch (dbErr: any) {
+        handleFirestoreError(dbErr, OperationType.WRITE, 'jobs');
+      }
 
-        // 3. Record Transaction in Firestore
+      // 3. Record Transaction in Firestore
+      try {
         await recordTransaction({
           jobId: jobRef.id,
           fromId: user.uid,
@@ -246,45 +251,20 @@ export const PostProject = () => {
           type: TransactionType.ESCROW_DEPOSIT,
           txHash: '' // We don't have the hash easily here unless we return it from createContractJob
         });
-      } catch (dbErr: any) {
-        handleFirestoreError(dbErr, OperationType.WRITE, 'jobs');
+      } catch (txErr: any) {
+        console.error('Failed to record transaction record:', txErr);
+        // We don't throw here to avoid failing the whole project posting if just the log fails
       }
 
       setIsSubmitted(true);
     } catch (err: any) {
       console.error('Error posting project:', err);
-      let errorMessage = err.message || 'Failed to post project. Please try again.';
-      
-      if (errorMessage.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds in your wallet. Please ensure you have enough Sepolia ETH to cover the budget and gas fees. You can get free Sepolia ETH from a faucet.';
-      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
-        errorMessage = 'Transaction was rejected in your wallet.';
-      } else if (errorMessage.includes('NOT a smart contract')) {
-        // Add specific guidance for the USDC contract error
-        errorMessage = (
-          <div className="space-y-3">
-            <p className="font-bold">USDC Contract Error</p>
-            <p>{errorMessage}</p>
-            <div className="p-3 bg-surface-container rounded-lg border border-white/5 space-y-2">
-              <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Quick Fix: Deploy Mock USDC</p>
-              <p className="text-[10px] leading-relaxed">If you are on a private network or the official USDC is missing, you must deploy your own Mock USDC in Remix.</p>
-              <div className="flex flex-col gap-2">
-                <a 
-                  href="https://remix.ethereum.org" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-tertiary hover:underline flex items-center gap-1 font-bold"
-                >
-                  1. Open Remix IDE <ExternalLink size={10} />
-                </a>
-                <p className="text-[10px]">2. Deploy a simple ERC20 with 6 decimals.</p>
-                <p className="text-[10px]">3. Update VITE_USDC_ADDRESS in AI Studio Secrets.</p>
-              </div>
-            </div>
-          </div>
-        ) as any;
+      // If it's a blockchain error, pass the whole object to Web3ErrorDisplay
+      if (err.code || err.data || err.message?.includes('user rejected') || err.message?.includes('insufficient funds')) {
+        setError(err);
+      } else {
+        setError(err.message || 'Failed to post project. Please try again.');
       }
-      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -375,30 +355,14 @@ export const PostProject = () => {
             <form onSubmit={handleSubmit}>
               <div className="p-6 md:p-8">
                 {error && (
-                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex flex-col gap-2 text-destructive text-sm mb-6">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle size={18} />
-                      <div>{error}</div>
-                    </div>
-                    {typeof error === 'string' && error.includes('Insufficient funds') && (
-                      <div className="ml-7 flex flex-wrap gap-2">
-                        <a 
-                          href="https://sepolia-faucet.pk910.de/" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline font-bold flex items-center gap-1"
-                        >
-                          Sepolia Faucet <ExternalLink size={12} />
-                        </a>
-                        <a 
-                          href="https://faucet.quicknode.com/ethereum/sepolia" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline font-bold flex items-center gap-1"
-                        >
-                          QuickNode Faucet <ExternalLink size={12} />
-                        </a>
+                  <div className="mb-6">
+                    {typeof error === 'string' ? (
+                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive text-sm">
+                        <AlertCircle size={18} />
+                        <div>{error}</div>
                       </div>
+                    ) : (
+                      <Web3ErrorDisplay error={error} />
                     )}
                   </div>
                 )}

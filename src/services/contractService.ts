@@ -90,9 +90,7 @@ export const approveToken = async (amount: string, tokenAddress: string = USDC_A
   const tokenContract = await getERC20Contract(tokenAddress, true);
   const amountInUnits = ethers.parseUnits(amount, 6); // USDC has 6 decimals
   
-  const tx = await tokenContract.approve(CONTRACT_ADDRESS, amountInUnits);
-  await tx.wait();
-  return tx;
+  return handleTransaction(tokenContract.approve(CONTRACT_ADDRESS, amountInUnits));
 };
 
 export const deployMockUSDC = async () => {
@@ -252,86 +250,51 @@ export const createJob = async (description: string, amount: string, tokenAddres
   if (allowance < amountInUnits) {
     // If allowance is not enough, we need to approve first
     console.log('Insufficient allowance, calling approve...');
-    try {
-      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, amountInUnits);
-      await approveTx.wait();
-      console.log('Approval successful');
-    } catch (approveErr: any) {
-      console.error('Error approving token:', approveErr);
-      throw new Error(`Failed to approve USDC. The contract at ${tokenAddress} might not be a valid ERC20 token on this network.`);
-    }
+    await handleTransaction(tokenContract.approve(CONTRACT_ADDRESS, amountInUnits));
+    console.log('Approval successful');
   }
 
   console.log('Creating job on contract...');
   console.log('Arguments:', { description, amountInUnits: amountInUnits.toString(), tokenAddress });
   
-  try {
-    const tx = await contract.createJob(description, amountInUnits, tokenAddress);
-    console.log('Transaction sent:', tx.hash);
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed:', receipt.hash);
-    
-    // Find the JobCreated event to get the jobId
-    const event = receipt.logs.find((log: any) => {
-      try {
-        const parsedLog = contract.interface.parseLog(log);
-        return parsedLog?.name === 'JobCreated';
-      } catch (e) {
-        return false;
-      }
-    });
+  const receipt = await handleTransaction(contract.createJob(description, amountInUnits, tokenAddress));
+  
+  // Find the JobCreated event to get the jobId
+  const event = receipt.logs.find((log: any) => {
+    try {
+      const parsedLog = contract.interface.parseLog(log);
+      return parsedLog?.name === 'JobCreated';
+    } catch (e) {
+      return false;
+    }
+  });
 
-    if (event) {
-      const parsedLog = contract.interface.parseLog(event);
-      return Number(parsedLog?.args.jobId);
-    }
-    
-    return null;
-  } catch (createErr: any) {
-    console.error('Error in createJob contract call:', createErr);
-    
-    // Try to decode the revert reason
-    if (createErr.data) {
-      try {
-        const decodedError = contract.interface.parseError(createErr.data);
-        console.error('Decoded revert reason:', decodedError);
-        throw new Error(`Contract reverted: ${decodedError?.name || 'Unknown reason'}`);
-      } catch (e) {
-        // If it's a string revert
-        throw new Error(`Contract reverted: ${createErr.reason || createErr.message}`);
-      }
-    }
-    
-    throw createErr;
+  if (event) {
+    const parsedLog = contract.interface.parseLog(event);
+    return Number(parsedLog?.args.jobId);
   }
+  
+  return null;
 };
 
 export const acceptJob = async (jobId: number) => {
   const contract = await getContract(true);
-  const tx = await contract.acceptJob(jobId);
-  await tx.wait();
-  return tx;
+  return handleTransaction(contract.acceptJob(jobId));
 };
 
 export const submitWork = async (jobId: number, workLink: string) => {
   const contract = await getContract(true);
-  const tx = await contract.submitWork(jobId, workLink);
-  await tx.wait();
-  return tx;
+  return handleTransaction(contract.submitWork(jobId, workLink));
 };
 
 export const approveWork = async (jobId: number) => {
   const contract = await getContract(true);
-  const tx = await contract.approveWork(jobId);
-  await tx.wait();
-  return tx;
+  return handleTransaction(contract.approveWork(jobId));
 };
 
 export const refund = async (jobId: number) => {
   const contract = await getContract(true);
-  const tx = await contract.refund(jobId);
-  await tx.wait();
-  return tx;
+  return handleTransaction(contract.refund(jobId));
 };
 
 export const getJob = async (jobId: number): Promise<Job> => {
@@ -353,4 +316,21 @@ export const getJobCount = async (): Promise<number> => {
   const contract = await getContract();
   const count = await contract.jobCount();
   return Number(count);
+};
+
+/**
+ * Helper to handle blockchain transactions with consistent error reporting.
+ * It waits for the transaction to be mined and returns the receipt.
+ */
+export const handleTransaction = async (txPromise: Promise<any>) => {
+  try {
+    const tx = await txPromise;
+    console.log('Transaction sent:', tx.hash);
+    const receipt = await tx.wait();
+    console.log('Transaction confirmed:', receipt.hash);
+    return receipt;
+  } catch (err: any) {
+    console.error('Blockchain transaction error:', err);
+    throw err;
+  }
 };

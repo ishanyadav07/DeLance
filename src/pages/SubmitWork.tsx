@@ -20,6 +20,7 @@ import { GradientText } from '../components/ui/GradientText';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
+import { Web3ErrorDisplay } from '../utils/web3Errors';
 import { submitWork as submitContractWork } from '../services/contractService';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 
@@ -92,13 +93,12 @@ export const SubmitWork = () => {
       setIsSubmitted(true);
     } catch (error: any) {
       console.error("Error submitting work:", error);
-      let errorMessage = error.message || 'Failed to submit work. Please try again.';
-      if (errorMessage.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
-      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
-        errorMessage = 'Transaction was rejected in your wallet.';
+      // If it's a blockchain error, pass the whole object to Web3ErrorDisplay
+      if (error.code || error.data || error.message?.includes('user rejected') || error.message?.includes('insufficient funds')) {
+        setError(error);
+      } else {
+        setError(error.message || 'Failed to submit work. Please try again.');
       }
-      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -158,30 +158,14 @@ export const SubmitWork = () => {
 
       <header className="mb-12">
         {error && (
-          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
-            {error.includes('Insufficient funds') && (
-              <div className="ml-6 flex flex-wrap gap-3">
-                <a 
-                  href="https://sepolia-faucet.pk910.de/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-bold flex items-center gap-1"
-                >
-                  Sepolia Faucet <ExternalLink size={12} />
-                </a>
-                <a 
-                  href="https://faucet.quicknode.com/ethereum/sepolia" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-bold flex items-center gap-1"
-                >
-                  QuickNode Faucet <ExternalLink size={12} />
-                </a>
+          <div className="mb-6">
+            {typeof error === 'string' ? (
+              <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex items-center gap-2">
+                <AlertCircle size={16} />
+                <span>{error}</span>
               </div>
+            ) : (
+              <Web3ErrorDisplay error={error} />
             )}
           </div>
         )}

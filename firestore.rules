@@ -293,15 +293,17 @@ service cloud.firestore {
     }
 
     function isValidTransaction(data) {
-      return hasOnlyAllowedFields(['id', 'jobId', 'milestoneId', 'fromId', 'toId', 'amount', 'status', 'type', 'createdAt']) &&
+      return hasOnlyAllowedFields(['id', 'jobId', 'milestoneId', 'fromId', 'toId', 'amount', 'currency', 'status', 'type', 'txHash', 'createdAt']) &&
              (!('id' in data) || data.id is string) &&
              (!('jobId' in data) || data.jobId is string) &&
              (!('milestoneId' in data) || data.milestoneId is string) &&
              (!('fromId' in data) || data.fromId is string) &&
              (!('toId' in data) || data.toId is string) &&
              (!('amount' in data) || (data.amount is number && data.amount >= 0)) &&
+             (!('currency' in data) || data.currency is string) &&
              (!('status' in data) || data.status is string) &&
              (!('type' in data) || data.type is string) &&
+             (!('txHash' in data) || data.txHash is string) &&
              (!('createdAt' in data) || data.createdAt is timestamp);
     }
 

@@ -13,7 +13,8 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/utils';
@@ -21,6 +22,7 @@ import { doc, getDoc, collection, onSnapshot, query, addDoc, serverTimestamp, up
 import { db } from '../firebase';
 import { useFirebase } from '../components/FirebaseProvider';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
+import { Web3ErrorDisplay } from '../utils/web3Errors';
 import { acceptJob as acceptContractJob, approveWork as approveContractWork, refund as refundContract } from '../services/contractService';
 import { recordTransaction, TransactionType, TransactionStatus } from '../services/transactionService';
 
@@ -41,6 +43,9 @@ export const ProjectDetails = () => {
   const [bids, setBids] = useState<any[]>([]);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const [selectedBids, setSelectedBids] = useState<string[]>([]);
+  const [freelancerData, setFreelancerData] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -83,6 +88,8 @@ export const ProjectDetails = () => {
     });
 
     // Real-time bids: Client/Admin see all, Freelancers see only their own
+    if (!user) return;
+
     let bidsQuery;
     if (user.uid === project.clientId || isAdmin) {
       bidsQuery = query(collection(db, `jobs/${id}/bids`), orderBy('createdAt', 'desc'));
@@ -93,6 +100,22 @@ export const ProjectDetails = () => {
     const unsubscribeBids = onSnapshot(bidsQuery, (snapshot) => {
       const bidsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
       setBids(bidsData);
+
+      // Fetch freelancer data for comparison
+      if (user?.uid === project.clientId || isAdmin) {
+        bidsData.forEach(async (bid) => {
+          if (!freelancerData[bid.freelancerId]) {
+            const freelancerRef = doc(db, 'users', bid.freelancerId);
+            const freelancerSnap = await getDoc(freelancerRef);
+            if (freelancerSnap.exists()) {
+              setFreelancerData(prev => ({
+                ...prev,
+                [bid.freelancerId]: freelancerSnap.data()
+              }));
+            }
+          }
+        });
+      }
     }, (error) => {
       console.error("Error fetching bids:", error);
     });
@@ -183,13 +206,12 @@ export const ProjectDetails = () => {
       setProject((prev: any) => ({ ...prev, status: 'in-progress', freelancerId: user.uid, freelancerName: user.displayName || 'Anonymous' }));
     } catch (err: any) {
       console.error("Error accepting job:", err);
-      let errorMessage = err.message || 'Failed to accept job. Please try again.';
-      if (errorMessage.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
-      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
-        errorMessage = 'Transaction was rejected in your wallet.';
+      // If it's a blockchain error, pass the whole object to Web3ErrorDisplay
+      if (err.code || err.data || err.message?.includes('user rejected') || err.message?.includes('insufficient funds')) {
+        setError(err);
+      } else {
+        setError(err.message || 'Failed to accept job. Please try again.');
       }
-      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -235,13 +257,12 @@ export const ProjectDetails = () => {
       }
     } catch (err: any) {
       console.error("Error approving milestone:", err);
-      let errorMessage = err.message || 'Failed to approve milestone. Please try again.';
-      if (errorMessage.includes('insufficient funds')) {
-        errorMessage = 'Insufficient funds in your wallet to cover gas fees. You can get free Sepolia ETH from a faucet.';
-      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
-        errorMessage = 'Transaction was rejected in your wallet.';
+      // If it's a blockchain error, pass the whole object to Web3ErrorDisplay
+      if (err.code || err.data || err.message?.includes('user rejected') || err.message?.includes('insufficient funds')) {
+        setError(err);
+      } else {
+        setError(err.message || 'Failed to approve milestone. Please try again.');
       }
-      setError(errorMessage);
     }
   };
 
@@ -254,7 +275,12 @@ export const ProjectDetails = () => {
       // Firestore will be updated by the BlockchainListener
     } catch (err: any) {
       console.error('Error refunding project:', err);
-      setError(err.message || 'Failed to refund project.');
+      // If it's a blockchain error, pass the whole object to Web3ErrorDisplay
+      if (err.code || err.data || err.message?.includes('user rejected') || err.message?.includes('insufficient funds')) {
+        setError(err);
+      } else {
+        setError(err.message || 'Failed to refund project.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -344,6 +370,16 @@ export const ProjectDetails = () => {
 
   const postedDate = project.createdAt?.toDate ? project.createdAt.toDate().toLocaleDateString() : 'Recently';
 
+  const toggleBidSelection = (bidId: string) => {
+    setSelectedBids(prev => 
+      prev.includes(bidId) 
+        ? prev.filter(id => id !== bidId) 
+        : prev.length < 3 ? [...prev, bidId] : prev
+    );
+  };
+
+  const comparisonBids = bids.filter(b => selectedBids.includes(b.id));
+
   return (
     <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <Link to="/marketplace" className="mb-6 sm:mb-8 flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group w-fit">
@@ -352,30 +388,14 @@ export const ProjectDetails = () => {
       </Link>
 
       {error && (
-        <div className="mb-8 p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-          {error.includes('Insufficient funds') && (
-            <div className="ml-6 flex flex-wrap gap-3">
-              <a 
-                href="https://sepolia-faucet.pk910.de/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-bold flex items-center gap-1"
-              >
-                Sepolia Faucet <ExternalLink size={12} />
-              </a>
-              <a 
-                href="https://faucet.quicknode.com/ethereum/sepolia" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-bold flex items-center gap-1"
-              >
-                QuickNode Faucet <ExternalLink size={12} />
-              </a>
+        <div className="mb-8">
+          {typeof error === 'string' ? (
+            <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm font-medium flex items-center gap-2">
+              <AlertCircle size={16} />
+              <span>{error}</span>
             </div>
+          ) : (
+            <Web3ErrorDisplay error={error} />
           )}
         </div>
       )}
@@ -545,6 +565,251 @@ export const ProjectDetails = () => {
               )}
             </div>
           </section>
+
+          {user?.uid === project.clientId && bids.length > 0 && (
+            <section className="space-y-8 pt-12 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-headline font-black uppercase tracking-tight">Proposals ({bids.length})</h2>
+                  <p className="text-xs text-on-surface-variant font-medium">Review and compare freelancer bids for this project.</p>
+                </div>
+                {bids.length >= 2 && (
+                  <button 
+                    onClick={() => {
+                      setIsComparing(!isComparing);
+                      if (isComparing) setSelectedBids([]);
+                    }}
+                    className={cn(
+                      "px-6 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                      isComparing 
+                        ? "bg-error/10 text-error border border-error/20" 
+                        : "bg-primary text-surface shadow-lg shadow-primary/20"
+                    )}
+                  >
+                    {isComparing ? (
+                      <>
+                        <X size={14} />
+                        Cancel Comparison
+                      </>
+                    ) : (
+                      <>
+                        <Star size={14} />
+                        Compare Bids
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {isComparing && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                      <Star size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Select up to 3 bids to compare</p>
+                      <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
+                        {selectedBids.length} of 3 selected
+                      </p>
+                    </div>
+                  </div>
+                  {selectedBids.length >= 2 && (
+                    <button 
+                      onClick={() => {
+                        const element = document.getElementById('comparison-view');
+                        element?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="px-6 py-2 bg-primary text-surface rounded-xl text-xs font-bold animate-pulse"
+                    >
+                      View Comparison
+                    </button>
+                  )}
+                </motion.div>
+              )}
+
+              <div className="space-y-4">
+                {bids.map((bid) => (
+                  <div 
+                    key={bid.id} 
+                    className={cn(
+                      "group relative bg-surface-container-low/30 border rounded-2xl p-6 transition-all hover:bg-surface-container-low/50",
+                      selectedBids.includes(bid.id) ? "border-primary ring-1 ring-primary/30" : "border-white/10"
+                    )}
+                  >
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                      <div className="flex gap-4 flex-1">
+                        {isComparing && (
+                          <div className="pt-1">
+                            <button 
+                              onClick={() => toggleBidSelection(bid.id)}
+                              className={cn(
+                                "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+                                selectedBids.includes(bid.id) 
+                                  ? "bg-primary border-primary text-surface" 
+                                  : "border-white/20 hover:border-primary/50"
+                              )}
+                            >
+                              {selectedBids.includes(bid.id) && <CheckCircle2 size={14} />}
+                            </button>
+                          </div>
+                        )}
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-container shrink-0">
+                          <img src={bid.freelancerPhotoURL || `https://picsum.photos/seed/${bid.freelancerId}/200/200`} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                        </div>
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-headline font-bold text-lg">{bid.freelancerName}</h3>
+                            <div className="flex items-center gap-1 text-warning">
+                              <Star size={12} fill="currentColor" />
+                              <span className="text-xs font-bold">{freelancerData[bid.freelancerId]?.rating || '5.0'}</span>
+                            </div>
+                            <span className={cn(
+                              "font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                              bid.status === 'pending' ? "border-white/10 text-outline" :
+                              bid.status === 'accepted' ? "border-success/50 text-success bg-success/5" :
+                              "border-error/50 text-error bg-error/5"
+                            )}>
+                              {bid.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-on-surface-variant line-clamp-2 leading-relaxed">
+                            {bid.proposal}
+                          </p>
+                          <div className="flex items-center gap-4 pt-2">
+                            <div className="flex items-center gap-1 text-on-surface-variant">
+                              <CheckCircle2 size={12} className="text-success" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">
+                                {freelancerData[bid.freelancerId]?.completedProjects || 0} Jobs Done
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-on-surface-variant">
+                              <Calendar size={12} />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">
+                                {bid.createdAt?.toDate ? bid.createdAt.toDate().toLocaleDateString() : 'Recently'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-4 w-full md:w-auto">
+                        <div className="text-right">
+                          <p className="font-mono text-2xl font-black tracking-tighter">
+                            {bid.amount.toLocaleString()} <span className="text-[10px] text-primary">{project.currency}</span>
+                          </p>
+                          <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Total Bid</p>
+                        </div>
+                        {project.status === 'open' && (
+                          <button 
+                            onClick={() => handleAcceptBid(bid)}
+                            disabled={isSubmitting}
+                            className="w-full md:w-auto px-8 py-3 bg-primary text-surface font-mono text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20"
+                          >
+                            {isSubmitting ? 'Processing...' : 'Accept Bid'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Comparison View */}
+              {selectedBids.length >= 2 && (
+                <div id="comparison-view" className="pt-12 space-y-8">
+                  <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
+                      <Star size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-headline font-black uppercase tracking-tight">Side-by-Side Comparison</h3>
+                      <p className="text-xs text-on-surface-variant">Comparing {comparisonBids.length} selected proposals.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {comparisonBids.map((bid) => {
+                      const freelancer = freelancerData[bid.freelancerId];
+                      return (
+                        <GlassCard key={bid.id} className="p-6 rounded-2xl border-white/10 space-y-6 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 blur-2xl" />
+                          
+                          <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-container ring-4 ring-white/5">
+                              <img src={bid.freelancerPhotoURL || `https://picsum.photos/seed/${bid.freelancerId}/200/200`} alt="" />
+                            </div>
+                            <div>
+                              <h4 className="font-headline font-bold text-lg">{bid.freelancerName}</h4>
+                              <p className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                                {freelancer?.title || 'Freelancer'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-6 pt-4 border-t border-white/5">
+                            <div className="space-y-1">
+                              <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Bid Amount</p>
+                              <p className="text-2xl font-black font-headline tracking-tighter">
+                                {bid.amount.toLocaleString()} <span className="text-xs text-primary">{project.currency}</span>
+                              </p>
+                            </div>
+
+                            <div className="space-y-1">
+                              <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Reputation</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex text-warning">
+                                  {[1, 2, 3, 4, 5].map(i => (
+                                    <Star key={i} size={12} fill={i <= Math.round(parseFloat(freelancer?.rating || '5')) ? "currentColor" : "none"} />
+                                  ))}
+                                </div>
+                                <span className="text-xs font-bold">{freelancer?.rating || '5.0'}</span>
+                              </div>
+                              <p className="text-[10px] text-on-surface-variant font-medium">
+                                {freelancer?.completedProjects || 0} projects completed
+                              </p>
+                            </div>
+
+                            <div className="space-y-1">
+                              <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Proposal Depth</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-secondary" 
+                                    style={{ width: `${Math.min(100, bid.proposal.length / 5)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-mono font-bold">{bid.proposal.split(' ').length} words</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Key Proposal Excerpt</p>
+                              <p className="text-xs text-on-surface-variant italic leading-relaxed line-clamp-4">
+                                "{bid.proposal}"
+                              </p>
+                            </div>
+                          </div>
+
+                          <button 
+                            onClick={() => handleAcceptBid(bid)}
+                            disabled={isSubmitting}
+                            className="w-full py-3 bg-primary text-surface rounded-xl font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all"
+                          >
+                            Hire {bid.freelancerName.split(' ')[0]}
+                          </button>
+                        </GlassCard>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           {project.status === 'open' && (
             <GlassCard className="p-6 sm:p-8 rounded-2xl space-y-6">
